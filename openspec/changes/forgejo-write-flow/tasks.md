@@ -8,10 +8,10 @@
 
 ## 2. Forgejo submission flow
 
-- [ ] 2.1 Define configuration required for Forgejo remote, credentials, owner/repo, and base branch.
-- [ ] 2.2 Implement draft commit creation and branch publication.
-- [ ] 2.3 Implement pull request creation against Forgejo.
-- [ ] 2.4 Add tests/fakes around branch publication and PR submission boundaries.
+- [x] 2.1 Define configuration required for Forgejo remote, credentials, owner/repo, and base branch.
+- [x] 2.2 Implement draft commit creation and branch publication.
+- [x] 2.3 Implement pull request creation against Forgejo.
+- [x] 2.4 Add tests/fakes around branch publication and PR submission boundaries.
 
 ## 3. Shared client contract
 
