@@ -1,30 +1,33 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/agent19710101/skillforge/internal/api"
+	"github.com/agent19710101/skillforge/internal/catalog"
 )
 
 func main() {
-	addr := ":8080"
-	if env := os.Getenv("SKILLFORGE_LISTEN_ADDR"); env != "" {
-		addr = env
+	addr := envOrDefault("SKILLFORGE_LISTEN_ADDR", ":8080")
+	repoRoot := envOrDefault("SKILLFORGE_REPO_ROOT", ".")
+
+	index, err := catalog.BuildIndex(repoRoot)
+	if err != nil {
+		log.Fatalf("build catalog index: %v", err)
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	})
-
-	log.Printf("skillforge-api listening on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	handler := api.NewServer(index).Handler()
+	log.Printf("skillforge-api listening on %s (repo root: %s)", addr, repoRoot)
+	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func envOrDefault(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
 }
