@@ -31,6 +31,7 @@ Skillforge is a self-hosted, open source skill sharing platform that stores all 
 - Search indexing may exist, but only as a derived cache from Git state.
 - Skill content must live under a deterministic repository layout.
 - The system must be practical to deploy for internal organizational use.
+- Current repository model decision: use canonical skill directories under `skills/<skill-name>/` with `SKILL.md` as the source of truth and no checked-in global catalog in v1.
 
 ## Candidate stack
 
