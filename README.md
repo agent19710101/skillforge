@@ -46,6 +46,19 @@ The API can run in read-only mode by default, or publish review branches and ope
 
 See [`docs/dev-stack.md`](docs/dev-stack.md) for the required submission environment variables, writable working-copy expectations, and a local verification flow.
 
+## CLI preview
+
+The first Go CLI slice now supports read-path commands against a running Skillforge API:
+
+```bash
+go run ./cmd/skillforge list
+go run ./cmd/skillforge search git
+go run ./cmd/skillforge get git-pr-review
+go run ./cmd/skillforge list --server http://localhost:8080 --json
+```
+
+The draft lifecycle subcommands are the next CLI batch.
+
 ## License
 
 MIT
