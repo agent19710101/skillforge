@@ -14,8 +14,20 @@ func TestSubmissionConfigValidate(t *testing.T) {
 		want   string
 	}{
 		{
+			name: "missing server url",
+			config: SubmissionConfig{
+				RemoteName: "origin",
+				Owner:      "acme",
+				Repo:       "skillforge",
+				BaseBranch: "main",
+				Token:      "secret",
+			},
+			want: "forgejo server URL is required",
+		},
+		{
 			name: "missing remote",
 			config: SubmissionConfig{
+				ServerURL:  "https://forgejo.example",
 				Owner:      "acme",
 				Repo:       "skillforge",
 				BaseBranch: "main",
@@ -26,6 +38,7 @@ func TestSubmissionConfigValidate(t *testing.T) {
 		{
 			name: "missing token defaults to token auth",
 			config: SubmissionConfig{
+				ServerURL:  "https://forgejo.example",
 				RemoteName: "origin",
 				Owner:      "acme",
 				Repo:       "skillforge",
@@ -36,6 +49,7 @@ func TestSubmissionConfigValidate(t *testing.T) {
 		{
 			name: "unsupported auth method",
 			config: SubmissionConfig{
+				ServerURL:  "https://forgejo.example",
 				RemoteName: "origin",
 				Owner:      "acme",
 				Repo:       "skillforge",
@@ -48,6 +62,7 @@ func TestSubmissionConfigValidate(t *testing.T) {
 		{
 			name: "no auth allowed for tests",
 			config: SubmissionConfig{
+				ServerURL:  "https://forgejo.example",
 				RemoteName: "origin",
 				Owner:      "acme",
 				Repo:       "skillforge",
@@ -299,6 +314,7 @@ func TestSubmitReturnsPullRequestFailure(t *testing.T) {
 
 func testSubmissionConfig() SubmissionConfig {
 	return SubmissionConfig{
+		ServerURL:  "https://forgejo.example",
 		RemoteName: "origin",
 		Owner:      "acme",
 		Repo:       "skillforge",

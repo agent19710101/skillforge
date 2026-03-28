@@ -2,10 +2,10 @@
 
 ## 1. Runtime configuration and server wiring
 
-- [ ] 1.1 Define environment-driven submission runtime configuration for the API server.
-- [ ] 1.2 Build real submission dependencies only when the configuration is complete.
-- [ ] 1.3 Keep submission capability/status responses accurate for configured vs. unconfigured servers.
-- [ ] 1.4 Add tests for configuration loading and capability signaling.
+- [x] 1.1 Define environment-driven submission runtime configuration for the API server.
+- [x] 1.2 Build real submission dependencies only when the configuration is complete.
+- [x] 1.3 Keep submission capability/status responses accurate for configured vs. unconfigured servers.
+- [x] 1.4 Add tests for configuration loading and capability signaling.
 
 ## 2. Real Git publisher
 
@@ -29,5 +29,5 @@
 ## 5. Verification and rollout
 
 - [x] 5.1 Validate the OpenSpec change strictly.
-- [ ] 5.2 Implement the first live-submission backend slice on a feature branch and open/update a PR.
+- [x] 5.2 Implement the first live-submission backend slice on a feature branch and open/update a PR.
 - [ ] 5.3 Archive the change when the live submission path is coherent end to end.

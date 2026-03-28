@@ -15,6 +15,7 @@ const (
 )
 
 type SubmissionConfig struct {
+	ServerURL  string            `json:"serverURL"`
 	RemoteName string            `json:"remoteName"`
 	Owner      string            `json:"owner"`
 	Repo       string            `json:"repo"`
@@ -24,6 +25,9 @@ type SubmissionConfig struct {
 }
 
 func (c SubmissionConfig) Validate() error {
+	if strings.TrimSpace(c.ServerURL) == "" {
+		return errors.New("forgejo server URL is required")
+	}
 	if strings.TrimSpace(c.RemoteName) == "" {
 		return errors.New("forgejo remote name is required")
 	}
@@ -201,7 +205,8 @@ func (e ValidationError) Unwrap() error {
 var ErrInvalidDraft = errors.New("invalid draft")
 
 func isZeroSubmissionConfig(c SubmissionConfig) bool {
-	return strings.TrimSpace(c.RemoteName) == "" &&
+	return strings.TrimSpace(c.ServerURL) == "" &&
+		strings.TrimSpace(c.RemoteName) == "" &&
 		strings.TrimSpace(c.Owner) == "" &&
 		strings.TrimSpace(c.Repo) == "" &&
 		strings.TrimSpace(c.BaseBranch) == "" &&
