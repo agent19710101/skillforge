@@ -257,7 +257,7 @@ func (s SubmissionService) Submit(ctx context.Context, workspace *Workspace) (Su
 	result.CommitHash = strings.TrimSpace(commitHash)
 
 	if err := s.Git.Publish(ctx, PublishRequest{
-		RepoRoot:   workspace.Root,
+		RepoRoot:   workspace.RepoRoot,
 		RemoteName: s.Config.RemoteName,
 		BranchName: workspace.BranchName,
 	}); err != nil {

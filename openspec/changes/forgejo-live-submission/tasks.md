@@ -16,9 +16,9 @@
 
 ## 3. Real Forgejo PR client
 
-- [ ] 3.1 Implement a narrow Forgejo client for pull-request creation.
-- [ ] 3.2 Return machine-readable PR identifier and URL from the live client.
-- [ ] 3.3 Add tests for request shaping and response handling.
+- [x] 3.1 Implement a narrow Forgejo client for pull-request creation.
+- [x] 3.2 Return machine-readable PR identifier and URL from the live client.
+- [x] 3.3 Add tests for request shaping and response handling.
 
 ## 4. Dev stack and operator docs
 

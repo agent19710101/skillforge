@@ -157,6 +157,23 @@ func TestSubmissionServiceFromEnv(t *testing.T) {
 	})
 }
 
+func TestDefaultBuildForgejoClient(t *testing.T) {
+	client, err := buildForgejoClient(draft.SubmissionConfig{
+		ServerURL:  "https://forgejo.example",
+		RemoteName: "origin",
+		Owner:      "acme",
+		Repo:       "skillforge",
+		BaseBranch: "main",
+		Token:      "secret",
+	})
+	if err != nil {
+		t.Fatalf("buildForgejoClient() error = %v", err)
+	}
+	if client == nil {
+		t.Fatal("buildForgejoClient() returned nil client")
+	}
+}
+
 func mapGet(values map[string]string) func(string) string {
 	return func(key string) string {
 		if values == nil {
