@@ -16,9 +16,9 @@
 
 ## 3. Self-hosted development stack
 
-- [ ] 3.1 Add Dockerfiles and a Docker Compose topology for Forgejo and Skillforge API.
-- [ ] 3.2 Document the canonical repository mount/clone strategy used by the API.
-- [ ] 3.3 Seed the dev stack with a small sample skills repository for local verification.
+- [x] 3.1 Add Dockerfiles and a Docker Compose topology for Forgejo and Skillforge API.
+- [x] 3.2 Document the canonical repository mount/clone strategy used by the API.
+- [x] 3.3 Seed the dev stack with a small sample skills repository for local verification.
 
 ## 4. Verification and developer workflow
 

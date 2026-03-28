@@ -1,0 +1,35 @@
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:10
+    container_name: skillforge-forgejo
+    restart: unless-stopped
+    environment:
+      USER_UID: "1000"
+      USER_GID: "1000"
+      FORGEJO__server__ROOT_URL: http://localhost:3000/
+      FORGEJO__server__HTTP_PORT: "3000"
+      FORGEJO__database__DB_TYPE: sqlite3
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    volumes:
+      - forgejo-data:/data
+
+  skillforge-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: skillforge-api
+    restart: unless-stopped
+    depends_on:
+      - forgejo
+    environment:
+      SKILLFORGE_LISTEN_ADDR: :8080
+      SKILLFORGE_REPO_ROOT: /data/skills-repo
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./dev/sample-skills-repo:/data/skills-repo:ro
+
+volumes:
+  forgejo-data:
