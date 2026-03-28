@@ -23,13 +23,20 @@ type draftValidationResponse struct {
 	Findings []catalog.Finding `json:"findings,omitempty"`
 }
 
+type draftSubmissionStatusResponse struct {
+	Enabled    bool   `json:"enabled"`
+	BaseBranch string `json:"baseBranch,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+}
+
 type draftResponse struct {
-	ID         string                  `json:"id"`
-	Operation  string                  `json:"operation"`
-	SkillName  string                  `json:"skillName"`
-	BranchName string                  `json:"branchName"`
-	CreatedAt  time.Time               `json:"createdAt"`
-	Validation draftValidationResponse `json:"validation"`
+	ID         string                        `json:"id"`
+	Operation  string                        `json:"operation"`
+	SkillName  string                        `json:"skillName"`
+	BranchName string                        `json:"branchName"`
+	CreatedAt  time.Time                     `json:"createdAt"`
+	Validation draftValidationResponse       `json:"validation"`
+	Submission draftSubmissionStatusResponse `json:"submission"`
 }
 
 type draftSubmissionResponse struct {
@@ -73,7 +80,7 @@ func (s *Server) handleDraftCollection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, draftResponseFrom(draftRecord))
+	writeJSON(w, http.StatusCreated, draftResponseFrom(draftRecord, s.drafts.SubmissionStatus()))
 }
 
 func (s *Server) handleDraftItem(w http.ResponseWriter, r *http.Request) {
@@ -99,10 +106,19 @@ func (s *Server) handleDraftItem(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusNotFound, "not_found", "draft not found")
 			return
 		}
-		writeJSON(w, http.StatusOK, draftResponseFrom(draftRecord))
+		writeJSON(w, http.StatusOK, draftResponseFrom(draftRecord, s.drafts.SubmissionStatus()))
 	case "submit":
 		if r.Method != http.MethodPost {
 			writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+			return
+		}
+		status := s.drafts.SubmissionStatus()
+		if !status.Enabled {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+				"error":      "submission_unavailable",
+				"message":    status.Reason,
+				"submission": draftSubmissionStatusResponseFrom(status),
+			})
 			return
 		}
 		result, err := s.drafts.Submit(r.Context(), id)
@@ -117,6 +133,7 @@ func (s *Server) handleDraftItem(w http.ResponseWriter, r *http.Request) {
 						"error":      "draft_invalid",
 						"message":    validationErr.Error(),
 						"validation": draftValidationResponseFrom(validationErr.Result),
+						"submission": draftSubmissionStatusResponseFrom(status),
 					})
 					return
 				}
@@ -189,7 +206,7 @@ func splitDraftPath(path string) (id, action string, ok bool) {
 	}
 }
 
-func draftResponseFrom(record *draft.Draft) draftResponse {
+func draftResponseFrom(record *draft.Draft, status draft.SubmissionStatus) draftResponse {
 	return draftResponse{
 		ID:         record.ID,
 		Operation:  record.Operation,
@@ -197,6 +214,15 @@ func draftResponseFrom(record *draft.Draft) draftResponse {
 		BranchName: record.BranchName,
 		CreatedAt:  record.CreatedAt,
 		Validation: draftValidationResponseFrom(record.Validation),
+		Submission: draftSubmissionStatusResponseFrom(status),
+	}
+}
+
+func draftSubmissionStatusResponseFrom(status draft.SubmissionStatus) draftSubmissionStatusResponse {
+	return draftSubmissionStatusResponse{
+		Enabled:    status.Enabled,
+		BaseBranch: status.BaseBranch,
+		Reason:     status.Reason,
 	}
 }
 

@@ -73,6 +73,55 @@ func TestSubmissionConfigValidate(t *testing.T) {
 	}
 }
 
+func TestSubmissionServiceStatus(t *testing.T) {
+	tests := []struct {
+		name    string
+		service SubmissionService
+		want    SubmissionStatus
+	}{
+		{
+			name:    "unconfigured by default",
+			service: SubmissionService{},
+			want: SubmissionStatus{
+				Enabled: false,
+				Reason:  "submission service is not configured",
+			},
+		},
+		{
+			name: "missing forgejo client",
+			service: SubmissionService{
+				Config: testSubmissionConfig(),
+				Git:    &fakeGitPublisher{},
+			},
+			want: SubmissionStatus{
+				Enabled: false,
+				Reason:  "forgejo client is not configured",
+			},
+		},
+		{
+			name: "enabled",
+			service: SubmissionService{
+				Config:  testSubmissionConfig(),
+				Git:     &fakeGitPublisher{},
+				Forgejo: &fakeForgejoClient{},
+			},
+			want: SubmissionStatus{
+				Enabled:    true,
+				BaseBranch: "main",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.service.Status()
+			if got != tt.want {
+				t.Fatalf("Status() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestSubmitBlocksInvalidDraft(t *testing.T) {
 	repo := testRepo(t)
 	writeTestFile(t, repo+"/skills/example-skill/SKILL.md", validSkill("example-skill", "Example skill"))

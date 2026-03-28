@@ -102,6 +102,10 @@ func (s *Service) Submit(ctx context.Context, id string) (SubmissionResult, erro
 	return s.Submission.Submit(ctx, draft.workspace)
 }
 
+func (s *Service) SubmissionStatus() SubmissionStatus {
+	return s.Submission.Status()
+}
+
 func (s *Service) lookup(id string) (*Draft, bool) {
 	s.mu.RLock()
 	draft, ok := s.drafts[id]

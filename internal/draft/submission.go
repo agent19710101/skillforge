@@ -164,6 +164,28 @@ type SubmissionService struct {
 	Forgejo ForgejoClient
 }
 
+type SubmissionStatus struct {
+	Enabled    bool   `json:"enabled"`
+	BaseBranch string `json:"baseBranch,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+}
+
+func (s SubmissionService) Status() SubmissionStatus {
+	if s.Git == nil && s.Forgejo == nil && isZeroSubmissionConfig(s.Config) {
+		return SubmissionStatus{Enabled: false, Reason: "submission service is not configured"}
+	}
+	if err := s.Config.Validate(); err != nil {
+		return SubmissionStatus{Enabled: false, Reason: fmt.Sprintf("invalid submission config: %v", err)}
+	}
+	if s.Git == nil {
+		return SubmissionStatus{Enabled: false, Reason: "git publisher is not configured"}
+	}
+	if s.Forgejo == nil {
+		return SubmissionStatus{Enabled: false, Reason: "forgejo client is not configured"}
+	}
+	return SubmissionStatus{Enabled: true, BaseBranch: s.Config.BaseBranch}
+}
+
 type ValidationError struct {
 	Result ValidationResult
 }
@@ -178,18 +200,22 @@ func (e ValidationError) Unwrap() error {
 
 var ErrInvalidDraft = errors.New("invalid draft")
 
+func isZeroSubmissionConfig(c SubmissionConfig) bool {
+	return strings.TrimSpace(c.RemoteName) == "" &&
+		strings.TrimSpace(c.Owner) == "" &&
+		strings.TrimSpace(c.Repo) == "" &&
+		strings.TrimSpace(c.BaseBranch) == "" &&
+		strings.TrimSpace(c.Token) == "" &&
+		strings.TrimSpace(string(c.AuthMethod)) == ""
+}
+
 func (s SubmissionService) Submit(ctx context.Context, workspace *Workspace) (SubmissionResult, error) {
 	if workspace == nil {
 		return SubmissionResult{}, errors.New("workspace is required")
 	}
-	if err := s.Config.Validate(); err != nil {
-		return SubmissionResult{}, fmt.Errorf("validate submission config: %w", err)
-	}
-	if s.Git == nil {
-		return SubmissionResult{}, errors.New("git publisher is required")
-	}
-	if s.Forgejo == nil {
-		return SubmissionResult{}, errors.New("forgejo client is required")
+	status := s.Status()
+	if !status.Enabled {
+		return SubmissionResult{}, errors.New(status.Reason)
 	}
 
 	validation, err := workspace.Validate()

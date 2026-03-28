@@ -256,6 +256,47 @@ func TestCreateDraftEndpointRejectsInvalidRequest(t *testing.T) {
 	}
 }
 
+func TestDraftCreateAndStatusExposeSubmissionCapability(t *testing.T) {
+	repo := testRepo(t)
+	h := testDraftHandler(t, repo, "capability01", draft.SubmissionService{})
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/drafts", strings.NewReader(draftCreateRequestJSON("create", "new-skill", validSkill("new-skill", "Fresh draft"))))
+	createRes := httptest.NewRecorder()
+	h.ServeHTTP(createRes, createReq)
+	if createRes.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, body = %s", createRes.Code, createRes.Body.String())
+	}
+
+	var created draftResponse
+	if err := json.Unmarshal(createRes.Body.Bytes(), &created); err != nil {
+		t.Fatalf("json.Unmarshal(create) error = %v", err)
+	}
+	if created.Submission.Enabled {
+		t.Fatalf("expected submission to be disabled by default, got %#v", created.Submission)
+	}
+	if created.Submission.Reason == "" {
+		t.Fatalf("expected submission reason in create response, got %#v", created.Submission)
+	}
+
+	statusReq := httptest.NewRequest(http.MethodGet, "/api/v1/drafts/capability01", nil)
+	statusRes := httptest.NewRecorder()
+	h.ServeHTTP(statusRes, statusReq)
+	if statusRes.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", statusRes.Code, statusRes.Body.String())
+	}
+
+	var statusBody draftResponse
+	if err := json.Unmarshal(statusRes.Body.Bytes(), &statusBody); err != nil {
+		t.Fatalf("json.Unmarshal(status) error = %v", err)
+	}
+	if statusBody.Submission.Enabled {
+		t.Fatalf("expected submission to remain disabled, got %#v", statusBody.Submission)
+	}
+	if statusBody.Submission.Reason == "" {
+		t.Fatalf("expected submission reason in status response, got %#v", statusBody.Submission)
+	}
+}
+
 func TestDraftStatusReturnsValidationFindings(t *testing.T) {
 	repo := testRepo(t)
 	writeFile(t, filepath.Join(repo, "skills", "example-skill", "SKILL.md"), validSkill("example-skill", "Original"))
@@ -334,6 +375,36 @@ func TestSubmitDraftReturnsBranchAndPullRequestMetadata(t *testing.T) {
 	}
 	if body.CommitHash != "abc123" {
 		t.Fatalf("unexpected commit hash: %#v", body.CommitHash)
+	}
+}
+
+func TestSubmitDraftReturnsUnavailableWhenSubmissionIsDisabled(t *testing.T) {
+	repo := testRepo(t)
+	h := testDraftHandler(t, repo, "disabled01", draft.SubmissionService{})
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/drafts", strings.NewReader(draftCreateRequestJSON("create", "new-skill", validSkill("new-skill", "Fresh draft"))))
+	createRes := httptest.NewRecorder()
+	h.ServeHTTP(createRes, createReq)
+	if createRes.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, body = %s", createRes.Code, createRes.Body.String())
+	}
+
+	submitReq := httptest.NewRequest(http.MethodPost, "/api/v1/drafts/disabled01/submit", nil)
+	submitRes := httptest.NewRecorder()
+	h.ServeHTTP(submitRes, submitReq)
+	if submitRes.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, body = %s", submitRes.Code, submitRes.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(submitRes.Body.Bytes(), &body); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if body["error"] != "submission_unavailable" {
+		t.Fatalf("unexpected response: %#v", body)
+	}
+	submission, ok := body["submission"].(map[string]any)
+	if !ok || submission["enabled"] != false {
+		t.Fatalf("unexpected submission status: %#v", body)
 	}
 }
 
