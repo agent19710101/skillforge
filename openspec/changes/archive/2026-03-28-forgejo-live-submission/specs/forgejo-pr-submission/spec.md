@@ -1,8 +1,5 @@
-# forgejo-pr-submission Specification
+## MODIFIED Requirements
 
-## Purpose
-Define how validated draft workspaces are published to Forgejo as reviewable branches and pull requests without mutating the canonical default branch directly.
-## Requirements
 ### Requirement: Publish draft branches to Forgejo
 The system SHALL publish validated draft branches to the configured Forgejo repository from a managed canonical working copy owned by the backend.
 
@@ -19,11 +16,3 @@ The system SHALL create Forgejo pull requests from published drafts using operat
 - **WHEN** a published draft branch exists in Forgejo
 - **THEN** the system creates a pull request targeting the configured base branch on the configured Forgejo repository
 - **AND** returns the pull request identifier and URL
-
-### Requirement: Preserve review-based publication
-The system SHALL use pull requests as the publication path for canonical skill changes.
-
-#### Scenario: Default branch remains unchanged before merge
-- **WHEN** a draft branch has been pushed and a pull request opened
-- **THEN** the default branch content remains unchanged until the pull request is merged in Forgejo
-
