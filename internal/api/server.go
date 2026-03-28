@@ -7,14 +7,28 @@ import (
 	"strings"
 
 	"github.com/agent19710101/skillforge/internal/catalog"
+	"github.com/agent19710101/skillforge/internal/draft"
 )
 
 type Server struct {
-	index *catalog.Index
+	index  *catalog.Index
+	drafts *draft.Service
 }
 
-func NewServer(index *catalog.Index) *Server {
-	return &Server{index: index}
+type Option func(*Server)
+
+func WithDraftService(service *draft.Service) Option {
+	return func(s *Server) {
+		s.drafts = service
+	}
+}
+
+func NewServer(index *catalog.Index, opts ...Option) *Server {
+	server := &Server{index: index}
+	for _, opt := range opts {
+		opt(server)
+	}
+	return server
 }
 
 func (s *Server) Handler() http.Handler {
@@ -22,6 +36,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/healthz", s.handleHealth)
 	mux.HandleFunc("/api/v1/skills", s.handleSkills)
 	mux.HandleFunc("/api/v1/skills/", s.handleSkillByName)
+	mux.HandleFunc("/api/v1/drafts", s.handleDraftCollection)
+	mux.HandleFunc("/api/v1/drafts/", s.handleDraftItem)
 	mux.HandleFunc("/api/v1/search", s.handleSearch)
 	mux.HandleFunc("/api/v1/index/status", s.handleIndexStatus)
 	return mux

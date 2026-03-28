@@ -21,6 +21,7 @@ type Manager struct {
 }
 
 type Workspace struct {
+	ID         string    `json:"id"`
 	RepoRoot   string    `json:"repoRoot"`
 	Root       string    `json:"root"`
 	BranchName string    `json:"branchName"`
@@ -58,6 +59,7 @@ func (m Manager) CreateWorkspace(operation, skillName string) (*Workspace, error
 	}
 
 	return &Workspace{
+		ID:         id,
 		RepoRoot:   repoRoot,
 		Root:       workspaceRoot,
 		BranchName: branchName,

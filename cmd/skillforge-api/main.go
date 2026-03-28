@@ -7,6 +7,7 @@ import (
 
 	"github.com/agent19710101/skillforge/internal/api"
 	"github.com/agent19710101/skillforge/internal/catalog"
+	"github.com/agent19710101/skillforge/internal/draft"
 )
 
 func main() {
@@ -18,7 +19,8 @@ func main() {
 		log.Fatalf("build catalog index: %v", err)
 	}
 
-	handler := api.NewServer(index).Handler()
+	drafts := draft.NewService(draft.Manager{RepoRoot: repoRoot}, draft.SubmissionService{})
+	handler := api.NewServer(index, api.WithDraftService(drafts)).Handler()
 	log.Printf("skillforge-api listening on %s (repo root: %s)", addr, repoRoot)
 	if err := http.ListenAndServe(addr, handler); err != nil {
 		log.Fatal(err)

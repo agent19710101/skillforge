@@ -15,9 +15,9 @@
 
 ## 3. Shared client contract
 
-- [ ] 3.1 Add API specs for draft lifecycle endpoints used by CLI and web UI.
-- [ ] 3.2 Document draft status, validation findings, and submission responses.
-- [ ] 3.3 Define the initial CLI and web UI integration points for create/update/delete/submit flows.
+- [x] 3.1 Add API specs for draft lifecycle endpoints used by CLI and web UI.
+- [x] 3.2 Document draft status, validation findings, and submission responses.
+- [x] 3.3 Define the initial CLI and web UI integration points for create/update/delete/submit flows.
 
 ## 4. Verification and rollout
 
