@@ -15,6 +15,7 @@ const (
 )
 
 type SubmissionConfig struct {
+	ServerURL  string            `json:"serverURL"`
 	RemoteName string            `json:"remoteName"`
 	Owner      string            `json:"owner"`
 	Repo       string            `json:"repo"`
@@ -24,6 +25,9 @@ type SubmissionConfig struct {
 }
 
 func (c SubmissionConfig) Validate() error {
+	if strings.TrimSpace(c.ServerURL) == "" {
+		return errors.New("forgejo server URL is required")
+	}
 	if strings.TrimSpace(c.RemoteName) == "" {
 		return errors.New("forgejo remote name is required")
 	}
@@ -110,7 +114,12 @@ func GenerateCommitMessage(workspace *Workspace) CommitMessage {
 
 type CommitRequest struct {
 	RepoRoot   string        `json:"repoRoot"`
+	DraftRoot  string        `json:"draftRoot"`
+	RemoteName string        `json:"remoteName"`
 	BranchName string        `json:"branchName"`
+	BaseBranch string        `json:"baseBranch"`
+	Operation  string        `json:"operation"`
+	SkillName  string        `json:"skillName"`
 	Message    CommitMessage `json:"message"`
 }
 
@@ -201,7 +210,8 @@ func (e ValidationError) Unwrap() error {
 var ErrInvalidDraft = errors.New("invalid draft")
 
 func isZeroSubmissionConfig(c SubmissionConfig) bool {
-	return strings.TrimSpace(c.RemoteName) == "" &&
+	return strings.TrimSpace(c.ServerURL) == "" &&
+		strings.TrimSpace(c.RemoteName) == "" &&
 		strings.TrimSpace(c.Owner) == "" &&
 		strings.TrimSpace(c.Repo) == "" &&
 		strings.TrimSpace(c.BaseBranch) == "" &&
@@ -234,8 +244,13 @@ func (s SubmissionService) Submit(ctx context.Context, workspace *Workspace) (Su
 
 	message := GenerateCommitMessage(workspace)
 	commitHash, err := s.Git.Commit(ctx, CommitRequest{
-		RepoRoot:   workspace.Root,
+		RepoRoot:   workspace.RepoRoot,
+		DraftRoot:  workspace.Root,
+		RemoteName: s.Config.RemoteName,
 		BranchName: workspace.BranchName,
+		BaseBranch: s.Config.BaseBranch,
+		Operation:  workspace.Operation,
+		SkillName:  workspace.SkillName,
 		Message:    message,
 	})
 	if err != nil {
@@ -244,7 +259,7 @@ func (s SubmissionService) Submit(ctx context.Context, workspace *Workspace) (Su
 	result.CommitHash = strings.TrimSpace(commitHash)
 
 	if err := s.Git.Publish(ctx, PublishRequest{
-		RepoRoot:   workspace.Root,
+		RepoRoot:   workspace.RepoRoot,
 		RemoteName: s.Config.RemoteName,
 		BranchName: workspace.BranchName,
 	}); err != nil {

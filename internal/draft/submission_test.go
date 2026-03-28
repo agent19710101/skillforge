@@ -3,6 +3,8 @@ package draft
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -14,8 +16,20 @@ func TestSubmissionConfigValidate(t *testing.T) {
 		want   string
 	}{
 		{
+			name: "missing server url",
+			config: SubmissionConfig{
+				RemoteName: "origin",
+				Owner:      "acme",
+				Repo:       "skillforge",
+				BaseBranch: "main",
+				Token:      "secret",
+			},
+			want: "forgejo server URL is required",
+		},
+		{
 			name: "missing remote",
 			config: SubmissionConfig{
+				ServerURL:  "https://forgejo.example",
 				Owner:      "acme",
 				Repo:       "skillforge",
 				BaseBranch: "main",
@@ -26,6 +40,7 @@ func TestSubmissionConfigValidate(t *testing.T) {
 		{
 			name: "missing token defaults to token auth",
 			config: SubmissionConfig{
+				ServerURL:  "https://forgejo.example",
 				RemoteName: "origin",
 				Owner:      "acme",
 				Repo:       "skillforge",
@@ -36,6 +51,7 @@ func TestSubmissionConfigValidate(t *testing.T) {
 		{
 			name: "unsupported auth method",
 			config: SubmissionConfig{
+				ServerURL:  "https://forgejo.example",
 				RemoteName: "origin",
 				Owner:      "acme",
 				Repo:       "skillforge",
@@ -48,6 +64,7 @@ func TestSubmissionConfigValidate(t *testing.T) {
 		{
 			name: "no auth allowed for tests",
 			config: SubmissionConfig{
+				ServerURL:  "https://forgejo.example",
 				RemoteName: "origin",
 				Owner:      "acme",
 				Repo:       "skillforge",
@@ -208,8 +225,11 @@ func TestSubmitSuccess(t *testing.T) {
 	if git.commitCalls != 1 || git.publishCalls != 1 {
 		t.Fatalf("git calls = commit:%d publish:%d, want 1 each", git.commitCalls, git.publishCalls)
 	}
-	if git.lastCommit.RepoRoot != workspace.Root || git.lastCommit.BranchName != workspace.BranchName {
+	if git.lastCommit.RepoRoot != workspace.RepoRoot || git.lastCommit.DraftRoot != workspace.Root || git.lastCommit.RemoteName != "origin" || git.lastCommit.BranchName != workspace.BranchName {
 		t.Fatalf("unexpected commit request: %#v", git.lastCommit)
+	}
+	if git.lastCommit.BaseBranch != "main" || git.lastCommit.Operation != "create" || git.lastCommit.SkillName != "new-skill" {
+		t.Fatalf("unexpected commit metadata: %#v", git.lastCommit)
 	}
 	if git.lastCommit.Message.Subject != "skillforge: create new-skill" {
 		t.Fatalf("commit subject = %q", git.lastCommit.Message.Subject)
@@ -217,7 +237,7 @@ func TestSubmitSuccess(t *testing.T) {
 	if got := git.lastCommit.Message.String(); !strings.Contains(got, "Operation: create") || !strings.Contains(got, "Skill: new-skill") {
 		t.Fatalf("commit message = %q", got)
 	}
-	if git.lastPublish.RemoteName != "origin" || git.lastPublish.BranchName != workspace.BranchName {
+	if git.lastPublish.RepoRoot != workspace.RepoRoot || git.lastPublish.RemoteName != "origin" || git.lastPublish.BranchName != workspace.BranchName {
 		t.Fatalf("unexpected publish request: %#v", git.lastPublish)
 	}
 	if forgejo.createCalls != 1 {
@@ -297,8 +317,72 @@ func TestSubmitReturnsPullRequestFailure(t *testing.T) {
 	}
 }
 
+func TestSubmitWithManagedGitPublisherAndForgejoClient(t *testing.T) {
+	fixture := newGitFixture(t)
+	workspace, err := Manager{RepoRoot: fixture.canonical, NewID: func() string { return "live01" }}.CreateWorkspace("create", "live-skill")
+	if err != nil {
+		t.Fatalf("CreateWorkspace() error = %v", err)
+	}
+	if err := workspace.CreateSkill(validSkill("live-skill", "Live draft")); err != nil {
+		t.Fatalf("CreateSkill() error = %v", err)
+	}
+
+	var requestCount int
+	forgejo := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		if r.Method != http.MethodPost {
+			t.Fatalf("method = %q, want POST", r.Method)
+		}
+		if r.URL.Path != "/api/v1/repos/acme/skillforge/pulls" {
+			t.Fatalf("path = %q", r.URL.Path)
+		}
+		if got := r.Header.Get("Authorization"); got != "token secret" {
+			t.Fatalf("authorization = %q", got)
+		}
+		_, _ = w.Write([]byte(`{"number":23,"id":99,"html_url":"https://forgejo.example/acme/skillforge/pulls/23"}`))
+	}))
+	defer forgejo.Close()
+
+	publisher := mustNewManagedGitPublisher(t, "main")
+	client, err := NewForgejoClient(SubmissionConfig{ServerURL: forgejo.URL, Token: "secret"})
+	if err != nil {
+		t.Fatalf("NewForgejoClient() error = %v", err)
+	}
+	service := SubmissionService{
+		Config: SubmissionConfig{
+			ServerURL:  forgejo.URL,
+			RemoteName: "origin",
+			Owner:      "acme",
+			Repo:       "skillforge",
+			BaseBranch: "main",
+			Token:      "secret",
+		},
+		Git:     publisher,
+		Forgejo: client,
+	}
+
+	result, err := service.Submit(context.Background(), workspace)
+	if err != nil {
+		t.Fatalf("Submit() error = %v", err)
+	}
+	if strings.TrimSpace(result.CommitHash) == "" {
+		t.Fatalf("result.CommitHash = %q, want non-empty hash", result.CommitHash)
+	}
+	if result.PullRequest == nil || result.PullRequest.Number != 23 || result.PullRequest.ID != 99 {
+		t.Fatalf("unexpected pull request = %#v", result.PullRequest)
+	}
+	if requestCount != 1 {
+		t.Fatalf("forgejo request count = %d, want 1", requestCount)
+	}
+	remoteContent := gitOutput(t, "", "--git-dir", fixture.remote, "show", "refs/heads/"+workspace.BranchName+":skills/live-skill/SKILL.md")
+	if !strings.Contains(remoteContent, "description: Live draft") {
+		t.Fatalf("remote branch missing live skill content: %q", remoteContent)
+	}
+}
+
 func testSubmissionConfig() SubmissionConfig {
 	return SubmissionConfig{
+		ServerURL:  "https://forgejo.example",
 		RemoteName: "origin",
 		Owner:      "acme",
 		Repo:       "skillforge",

@@ -1,8 +1,5 @@
-# write-clients-contract Specification
+## MODIFIED Requirements
 
-## Purpose
-Define the shared machine-readable draft lifecycle contract that both future CLI and web UI clients use for authoring, validation, and submission flows.
-## Requirements
 ### Requirement: Expose a shared draft lifecycle contract
 The system SHALL provide a shared backend contract for future CLI and web UI authoring flows, including machine-readable submission capability reporting.
 
@@ -11,13 +8,6 @@ The system SHALL provide a shared backend contract for future CLI and web UI aut
 - **THEN** the response includes whether live submission is enabled
 - **AND** includes a reason when submission is unavailable because the server is not configured
 
-### Requirement: Report draft validation state
-The system SHALL return draft validation findings in a machine-readable form.
-
-#### Scenario: Inspect invalid draft status
-- **WHEN** a client requests draft status for a draft with validation errors
-- **THEN** the response includes validation findings that identify the blocking issues
-
 ### Requirement: Report submission results
 The system SHALL return submission metadata after successful PR creation from the live backend.
 
@@ -25,4 +15,3 @@ The system SHALL return submission metadata after successful PR creation from th
 - **WHEN** a draft is successfully submitted for review against a configured Forgejo target
 - **THEN** the response includes the resulting branch name, pull request identifier, and pull request URL
 - **AND** identifies the configured base branch used for the submission
-

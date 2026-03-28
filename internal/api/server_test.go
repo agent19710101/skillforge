@@ -297,6 +297,52 @@ func TestDraftCreateAndStatusExposeSubmissionCapability(t *testing.T) {
 	}
 }
 
+func TestDraftCreateAndStatusExposeEnabledSubmissionCapability(t *testing.T) {
+	repo := testRepo(t)
+	h := testDraftHandler(t, repo, "enabled01", draft.SubmissionService{
+		Config: draft.SubmissionConfig{
+			ServerURL:  "https://forgejo.example",
+			RemoteName: "origin",
+			Owner:      "acme",
+			Repo:       "skillforge",
+			BaseBranch: "main",
+			Token:      "secret",
+		},
+		Git:     &fakeGitPublisher{},
+		Forgejo: &fakeForgejoClient{},
+	})
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/drafts", strings.NewReader(draftCreateRequestJSON("create", "new-skill", validSkill("new-skill", "Fresh draft"))))
+	createRes := httptest.NewRecorder()
+	h.ServeHTTP(createRes, createReq)
+	if createRes.Code != http.StatusCreated {
+		t.Fatalf("create status = %d, body = %s", createRes.Code, createRes.Body.String())
+	}
+
+	var created draftResponse
+	if err := json.Unmarshal(createRes.Body.Bytes(), &created); err != nil {
+		t.Fatalf("json.Unmarshal(create) error = %v", err)
+	}
+	if !created.Submission.Enabled || created.Submission.BaseBranch != "main" {
+		t.Fatalf("unexpected create submission status: %#v", created.Submission)
+	}
+
+	statusReq := httptest.NewRequest(http.MethodGet, "/api/v1/drafts/enabled01", nil)
+	statusRes := httptest.NewRecorder()
+	h.ServeHTTP(statusRes, statusReq)
+	if statusRes.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", statusRes.Code, statusRes.Body.String())
+	}
+
+	var statusBody draftResponse
+	if err := json.Unmarshal(statusRes.Body.Bytes(), &statusBody); err != nil {
+		t.Fatalf("json.Unmarshal(status) error = %v", err)
+	}
+	if !statusBody.Submission.Enabled || statusBody.Submission.BaseBranch != "main" {
+		t.Fatalf("unexpected status submission: %#v", statusBody.Submission)
+	}
+}
+
 func TestDraftStatusReturnsValidationFindings(t *testing.T) {
 	repo := testRepo(t)
 	writeFile(t, filepath.Join(repo, "skills", "example-skill", "SKILL.md"), validSkill("example-skill", "Original"))
@@ -332,6 +378,7 @@ func TestSubmitDraftReturnsBranchAndPullRequestMetadata(t *testing.T) {
 	repo := testRepo(t)
 	h := testDraftHandler(t, repo, "submit01", draft.SubmissionService{
 		Config: draft.SubmissionConfig{
+			ServerURL:  "https://forgejo.example",
 			RemoteName: "origin",
 			Owner:      "acme",
 			Repo:       "skillforge",
@@ -413,6 +460,7 @@ func TestSubmitDraftRejectsBlockedAndMissingDrafts(t *testing.T) {
 	writeFile(t, filepath.Join(repo, "skills", "example-skill", "SKILL.md"), validSkill("example-skill", "Original"))
 	h := testDraftHandler(t, repo, "blocked01", draft.SubmissionService{
 		Config: draft.SubmissionConfig{
+			ServerURL:  "https://forgejo.example",
 			RemoteName: "origin",
 			Owner:      "acme",
 			Repo:       "skillforge",

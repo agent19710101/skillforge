@@ -31,11 +31,20 @@ Git remains the source of truth. Any search index/cache must be derived from rep
 
 ## Repository status
 
-This repository currently contains:
+This repository now contains the early Go backend and local self-hosted stack for:
 
-- project brief
-- first brainstorming slice
-- OpenSpec bootstrap
+- canonical skill repository scanning and validation
+- list/get/search read APIs
+- draft create/status/submit lifecycle endpoints
+- managed Git publication into a canonical working copy
+- Forgejo pull request creation for live draft submission
+- OpenSpec baseline specs for the current backend slices
+
+## Live draft submission
+
+The API can run in read-only mode by default, or publish review branches and open Forgejo pull requests when live submission is configured.
+
+See [`docs/dev-stack.md`](docs/dev-stack.md) for the required submission environment variables, writable working-copy expectations, and a local verification flow.
 
 ## License
 

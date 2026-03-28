@@ -1,8 +1,5 @@
-# compose-dev-stack Specification
+## MODIFIED Requirements
 
-## Purpose
-Define the self-hosted development topology for running Forgejo and the Skillforge API with an explicit canonical sample skills repository.
-## Requirements
 ### Requirement: Provide a self-hosted local compose stack
 The system SHALL provide a Docker Compose topology for local self-hosted development and demonstration, including an intentional path for enabling live draft submission.
 
@@ -17,11 +14,3 @@ The compose setup SHALL make the canonical skills repository used by the API exp
 #### Scenario: Configure writable canonical repository for API
 - **WHEN** an operator enables live submission in the compose stack
 - **THEN** the API service configuration clearly identifies the writable canonical repository path, remote, base branch, and Forgejo connection inputs
-
-### Requirement: Support local verification with sample content
-The development stack SHALL support local verification with sample skill content.
-
-#### Scenario: Verify API against sample skill repository
-- **WHEN** the compose stack is started with seeded sample skills
-- **THEN** an operator can successfully exercise list, search, and get flows against non-empty data
-
