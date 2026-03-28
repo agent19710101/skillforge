@@ -208,3 +208,48 @@ func TestRunDraftSubmitDraftInvalid(t *testing.T) {
 		t.Fatalf("unexpected stderr: %s", stderr.String())
 	}
 }
+
+func TestRunListPreservesServerPathPrefix(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/skillforge/api/v1/skills" {
+			t.Fatalf("path = %q, want /skillforge/api/v1/skills", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"skills":[],"total":0,"offset":0,"limit":50}`))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	exitCode := run([]string{"list", "--server", server.URL + "/skillforge", "--json"}, &stdout, &stderr)
+	if exitCode != 0 {
+		t.Fatalf("exitCode = %d, stderr = %s", exitCode, stderr.String())
+	}
+}
+
+func TestRunDraftSubmitJSONErrorOutput(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte(`{"error":"submission_unavailable","message":"submission backend is not configured","submission":{"enabled":false,"reason":"submission backend is not configured"}}`))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	exitCode := run([]string{"draft", "submit", "--server", server.URL, "--json", "draft01"}, &stdout, &stderr)
+	if exitCode != 1 {
+		t.Fatalf("exitCode = %d, want 1", exitCode)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &payload); err != nil {
+		t.Fatalf("stdout is not JSON: %v\n%s", err, stdout.String())
+	}
+	if payload["error"] != "submission_unavailable" || payload["message"] != "submission backend is not configured" {
+		t.Fatalf("unexpected payload: %#v", payload)
+	}
+	submission, ok := payload["submission"].(map[string]any)
+	if !ok || submission["enabled"] != false {
+		t.Fatalf("unexpected submission payload: %#v", payload["submission"])
+	}
+}

@@ -219,3 +219,22 @@ func TestClientSubmitDraftReturnsTypedSubmissionError(t *testing.T) {
 		t.Fatalf("unexpected api error: %+v", apiErr)
 	}
 }
+
+func TestClientPreservesBaseURLPathPrefix(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/skillforge/api/v1/skills" {
+			t.Fatalf("path = %q, want /skillforge/api/v1/skills", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"skills":[],"total":0,"offset":0,"limit":0}`))
+	}))
+	defer server.Close()
+
+	c, err := New(server.URL + "/skillforge")
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	if _, err := c.ListSkills(context.Background(), ListOptions{}); err != nil {
+		t.Fatalf("ListSkills() error = %v", err)
+	}
+}

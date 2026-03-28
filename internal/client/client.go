@@ -114,6 +114,9 @@ func New(baseURL string) (*Client, error) {
 	if u.Scheme == "" || u.Host == "" {
 		return nil, fmt.Errorf("base URL must include scheme and host")
 	}
+	if u.Path != "" && !strings.HasSuffix(u.Path, "/") {
+		u.Path += "/"
+	}
 	return &Client{BaseURL: u, HTTPClient: http.DefaultClient}, nil
 }
 
@@ -179,7 +182,7 @@ func (c *Client) sendJSON(ctx context.Context, method, path string, query url.Va
 		return fmt.Errorf("base URL is required")
 	}
 
-	rel := &url.URL{Path: path}
+	rel := &url.URL{Path: strings.TrimLeft(path, "/")}
 	if len(query) > 0 {
 		rel.RawQuery = query.Encode()
 	}

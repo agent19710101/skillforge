@@ -30,31 +30,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	ctx := context.Background()
+	var err error
 	switch args[0] {
 	case "list":
-		if err := runList(ctx, args[1:], stdout, stderr); err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-		return 0
+		err = runList(ctx, args[1:], stdout, stderr)
 	case "search":
-		if err := runSearch(ctx, args[1:], stdout, stderr); err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-		return 0
+		err = runSearch(ctx, args[1:], stdout, stderr)
 	case "get":
-		if err := runGet(ctx, args[1:], stdout, stderr); err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-		return 0
+		err = runGet(ctx, args[1:], stdout, stderr)
 	case "draft":
-		if err := runDraft(ctx, args[1:], stdout, stderr); err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-		return 0
+		err = runDraft(ctx, args[1:], stdout, stderr)
 	case "help", "--help", "-h":
 		printUsage(stdout)
 		return 0
@@ -63,6 +48,19 @@ func run(args []string, stdout, stderr io.Writer) int {
 		printUsage(stderr)
 		return 2
 	}
+	if err == nil {
+		return 0
+	}
+	if wantsJSONOutput(args) {
+		var apiErr *client.APIError
+		if errors.As(err, &apiErr) {
+			if jsonErr := writeJSON(stdout, apiErr); jsonErr == nil {
+				return 1
+			}
+		}
+	}
+	fmt.Fprintln(stderr, err)
+	return 1
 }
 
 func runList(ctx context.Context, args []string, stdout, stderr io.Writer) error {
@@ -297,6 +295,15 @@ func readDraftContent(path string) (string, error) {
 		return "", fmt.Errorf("read draft content: %w", err)
 	}
 	return string(data), nil
+}
+
+func wantsJSONOutput(args []string) bool {
+	for _, arg := range args {
+		if arg == "--json" {
+			return true
+		}
+	}
+	return false
 }
 
 func writeJSON(w io.Writer, value any) error {
