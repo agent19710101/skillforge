@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import './App.css'
 import { getIndexStatus, getSkill, listSkills, searchSkills, type IndexStatus, type SkillRecord } from './api'
 

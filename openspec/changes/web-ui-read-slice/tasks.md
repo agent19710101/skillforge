@@ -3,7 +3,7 @@
 ## 1. OpenSpec and scaffolding
 
 - [x] 1.1 Write proposal/design/tasks for the first web UI slice.
-- [ ] 1.2 Add web-UI-focused spec deltas for browse/search/detail behavior.
+- [x] 1.2 Add web-UI-focused spec deltas for browse/search/detail behavior.
 
 ## 2. Frontend foundation
 
@@ -20,6 +20,6 @@
 
 ## 4. Docs and rollout
 
-- [ ] 4.1 Document local UI usage in README/dev docs.
-- [ ] 4.2 Open or update the round-4 PR with the first UI batch.
-- [ ] 4.3 Validate the change strictly.
+- [x] 4.1 Document local UI usage in README/dev docs.
+- [x] 4.2 Open or update the round-4 PR with the first UI batch.
+- [x] 4.3 Validate the change strictly.
