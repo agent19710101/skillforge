@@ -1,10 +1,10 @@
 ## 1. Draft workspace and mutation model
 
-- [ ] 1.1 Define the backend package layout for managed draft workspaces.
-- [ ] 1.2 Implement workspace creation from the canonical repository with deterministic branch naming.
-- [ ] 1.3 Implement semantic create/update/delete mutations under `skills/<skill-name>/`.
-- [ ] 1.4 Reuse repository/AgentSkills validation against the draft workspace.
-- [ ] 1.5 Add tests for valid mutations, invalid drafts, and branch/workspace isolation.
+- [x] 1.1 Define the backend package layout for managed draft workspaces.
+- [x] 1.2 Implement workspace creation from the canonical repository with deterministic branch naming.
+- [x] 1.3 Implement semantic create/update/delete mutations under `skills/<skill-name>/`.
+- [x] 1.4 Reuse repository/AgentSkills validation against the draft workspace.
+- [x] 1.5 Add tests for valid mutations, invalid drafts, and branch/workspace isolation.
 
 ## 2. Forgejo submission flow
 
@@ -21,6 +21,6 @@
 
 ## 4. Verification and rollout
 
-- [ ] 4.1 Validate the OpenSpec change strictly.
-- [ ] 4.2 Implement the first backend slice on a feature branch and update the open PR.
+- [x] 4.1 Validate the OpenSpec change strictly.
+- [x] 4.2 Implement the first backend slice on a feature branch and update the open PR.
 - [ ] 4.3 Archive the change when the write-flow implementation slice is coherent.

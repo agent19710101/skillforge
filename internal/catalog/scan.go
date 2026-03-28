@@ -17,6 +17,10 @@ import (
 
 var canonicalSkillNameRE = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 
+func IsCanonicalSkillName(name string) bool {
+	return canonicalSkillNameRE.MatchString(strings.TrimSpace(name))
+}
+
 type Finding struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
