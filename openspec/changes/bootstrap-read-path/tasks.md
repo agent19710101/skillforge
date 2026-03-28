@@ -1,10 +1,10 @@
 ## 1. Repository ingestion foundation
 
-- [ ] 1.1 Create the Go module and backend service layout for repository scanning and HTTP serving.
-- [ ] 1.2 Implement repository discovery for `skills/<skill-name>/SKILL.md` entries.
-- [ ] 1.3 Implement `SKILL.md` frontmatter parsing and normalized metadata extraction.
-- [ ] 1.4 Implement validation for directory naming, required files, and `name`/directory consistency.
-- [ ] 1.5 Produce a scan result model that includes both valid records and validation findings.
+- [x] 1.1 Create the Go module and backend service layout for repository scanning and HTTP serving.
+- [x] 1.2 Implement repository discovery for `skills/<skill-name>/SKILL.md` entries.
+- [x] 1.3 Implement `SKILL.md` frontmatter parsing and normalized metadata extraction.
+- [x] 1.4 Implement validation for directory naming, required files, and `name`/directory consistency.
+- [x] 1.5 Produce a scan result model that includes both valid records and validation findings.
 
 ## 2. Derived catalog and read API
 
@@ -22,6 +22,6 @@
 
 ## 4. Verification and developer workflow
 
-- [ ] 4.1 Add automated tests for repository scanning, parsing, validation, and search behavior.
-- [ ] 4.2 Run formatting, tests, and linting for the backend slice.
+- [x] 4.1 Add automated tests for repository scanning, parsing, validation, and search behavior.
+- [x] 4.2 Run formatting, tests, and linting for the backend slice.
 - [ ] 4.3 Prepare the follow-up change for write flows, branch creation, and PR submission.
