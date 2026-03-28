@@ -115,6 +115,7 @@ func GenerateCommitMessage(workspace *Workspace) CommitMessage {
 type CommitRequest struct {
 	RepoRoot   string        `json:"repoRoot"`
 	DraftRoot  string        `json:"draftRoot"`
+	RemoteName string        `json:"remoteName"`
 	BranchName string        `json:"branchName"`
 	BaseBranch string        `json:"baseBranch"`
 	Operation  string        `json:"operation"`
@@ -245,6 +246,7 @@ func (s SubmissionService) Submit(ctx context.Context, workspace *Workspace) (Su
 	commitHash, err := s.Git.Commit(ctx, CommitRequest{
 		RepoRoot:   workspace.RepoRoot,
 		DraftRoot:  workspace.Root,
+		RemoteName: s.Config.RemoteName,
 		BranchName: workspace.BranchName,
 		BaseBranch: s.Config.BaseBranch,
 		Operation:  workspace.Operation,

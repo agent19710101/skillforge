@@ -25,6 +25,7 @@ func TestManagedGitPublisherMaterializesCreateUpdateAndDelete(t *testing.T) {
 		commitHash, err := publisher.Commit(context.Background(), CommitRequest{
 			RepoRoot:   workspace.RepoRoot,
 			DraftRoot:  workspace.Root,
+			RemoteName: "origin",
 			BranchName: workspace.BranchName,
 			BaseBranch: "main",
 			Operation:  workspace.Operation,
@@ -71,6 +72,7 @@ func TestManagedGitPublisherMaterializesCreateUpdateAndDelete(t *testing.T) {
 		if _, err := publisher.Commit(context.Background(), CommitRequest{
 			RepoRoot:   workspace.RepoRoot,
 			DraftRoot:  workspace.Root,
+			RemoteName: "origin",
 			BranchName: workspace.BranchName,
 			BaseBranch: "main",
 			Operation:  workspace.Operation,
@@ -102,6 +104,7 @@ func TestManagedGitPublisherMaterializesCreateUpdateAndDelete(t *testing.T) {
 		if _, err := publisher.Commit(context.Background(), CommitRequest{
 			RepoRoot:   workspace.RepoRoot,
 			DraftRoot:  workspace.Root,
+			RemoteName: "origin",
 			BranchName: workspace.BranchName,
 			BaseBranch: "main",
 			Operation:  workspace.Operation,
@@ -135,6 +138,7 @@ func TestManagedGitPublisherBasesBranchFromRequestedBaseBranch(t *testing.T) {
 	if _, err := publisher.Commit(context.Background(), CommitRequest{
 		RepoRoot:   workspace.RepoRoot,
 		DraftRoot:  workspace.Root,
+		RemoteName: "origin",
 		BranchName: workspace.BranchName,
 		BaseBranch: "release",
 		Operation:  workspace.Operation,
@@ -152,6 +156,53 @@ func TestManagedGitPublisherBasesBranchFromRequestedBaseBranch(t *testing.T) {
 	assertFileContains(t, filepath.Join(fixture.canonical, "BASE.txt"), "release base")
 }
 
+func TestManagedGitPublisherRefreshesBaseBranchFromRemoteBeforeCommit(t *testing.T) {
+	fixture := newGitFixture(t)
+	gitRun(t, fixture.canonical, "checkout", "-b", "release", "origin/release")
+	gitRun(t, fixture.canonical, "checkout", "main")
+	staleLocalRelease := strings.TrimSpace(gitOutput(t, fixture.canonical, "rev-parse", "release"))
+
+	updater := filepath.Join(t.TempDir(), "updater")
+	gitRun(t, "", "clone", fixture.remote, updater)
+	gitRun(t, updater, "checkout", "release")
+	writeTestFile(t, filepath.Join(updater, "BASE.txt"), "release base v2\n")
+	gitRun(t, updater, "add", "BASE.txt")
+	gitRun(t, updater, "commit", "-m", "advance release")
+	gitRun(t, updater, "push", "origin", "release")
+	freshRemoteRelease := strings.TrimSpace(gitOutput(t, updater, "rev-parse", "release"))
+	if freshRemoteRelease == staleLocalRelease {
+		t.Fatal("expected remote release branch to advance")
+	}
+
+	workspace, err := Manager{RepoRoot: fixture.canonical, NewID: func() string { return "refresh01" }}.CreateWorkspace("create", "refreshed-skill")
+	if err != nil {
+		t.Fatalf("CreateWorkspace() error = %v", err)
+	}
+	if err := workspace.CreateSkill(validSkill("refreshed-skill", "Refreshed draft")); err != nil {
+		t.Fatalf("CreateSkill() error = %v", err)
+	}
+
+	publisher := mustNewManagedGitPublisher(t, "release")
+	if _, err := publisher.Commit(context.Background(), CommitRequest{
+		RepoRoot:   workspace.RepoRoot,
+		DraftRoot:  workspace.Root,
+		RemoteName: "origin",
+		BranchName: workspace.BranchName,
+		BaseBranch: "release",
+		Operation:  workspace.Operation,
+		SkillName:  workspace.SkillName,
+		Message:    CommitMessage{Subject: "branch from refreshed release"},
+	}); err != nil {
+		t.Fatalf("Commit() error = %v", err)
+	}
+
+	parentHash := strings.TrimSpace(gitOutput(t, fixture.canonical, "rev-parse", workspace.BranchName+"^"))
+	if parentHash != freshRemoteRelease {
+		t.Fatalf("submission branch parent = %q, want refreshed remote release %q", parentHash, freshRemoteRelease)
+	}
+	assertFileContains(t, filepath.Join(fixture.canonical, "BASE.txt"), "release base v2")
+}
+
 func TestManagedGitPublisherSurfacesPublishFailure(t *testing.T) {
 	fixture := newGitFixture(t)
 	workspace, err := Manager{RepoRoot: fixture.canonical, NewID: func() string { return "fail01" }}.CreateWorkspace("create", "new-skill")
@@ -166,6 +217,7 @@ func TestManagedGitPublisherSurfacesPublishFailure(t *testing.T) {
 	if _, err := publisher.Commit(context.Background(), CommitRequest{
 		RepoRoot:   workspace.RepoRoot,
 		DraftRoot:  workspace.Root,
+		RemoteName: "origin",
 		BranchName: workspace.BranchName,
 		BaseBranch: "main",
 		Operation:  workspace.Operation,

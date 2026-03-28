@@ -41,6 +41,10 @@ func (p *ManagedGitPublisher) Commit(ctx context.Context, req CommitRequest) (st
 	if err != nil {
 		return "", fmt.Errorf("resolve draft root: %w", err)
 	}
+	remoteName := strings.TrimSpace(req.RemoteName)
+	if remoteName == "" {
+		return "", errors.New("remote name is required")
+	}
 	branchName := strings.TrimSpace(req.BranchName)
 	if branchName == "" {
 		return "", errors.New("branch name is required")
@@ -64,7 +68,7 @@ func (p *ManagedGitPublisher) Commit(ctx context.Context, req CommitRequest) (st
 		return "", errors.New("commit message subject is required")
 	}
 
-	if err := p.resetBranch(ctx, repoRoot, baseBranch, branchName); err != nil {
+	if err := p.resetBranch(ctx, repoRoot, remoteName, baseBranch, branchName); err != nil {
 		return "", err
 	}
 	if err := materializeSkillChange(draftRoot, repoRoot, operation, skillName); err != nil {
@@ -118,18 +122,22 @@ func (p *ManagedGitPublisher) Publish(ctx context.Context, req PublishRequest) e
 	return nil
 }
 
-func (p *ManagedGitPublisher) resetBranch(ctx context.Context, repoRoot, baseBranch, branchName string) error {
+func (p *ManagedGitPublisher) resetBranch(ctx context.Context, repoRoot, remoteName, baseBranch, branchName string) error {
 	if err := p.runGit(ctx, repoRoot, "reset", "--hard"); err != nil {
 		return fmt.Errorf("reset working copy: %w", err)
 	}
 	if err := p.runGit(ctx, repoRoot, "clean", "-fd"); err != nil {
 		return fmt.Errorf("clean working copy: %w", err)
 	}
-	if err := p.runGit(ctx, repoRoot, "checkout", "-B", branchName, baseBranch); err != nil {
-		return fmt.Errorf("checkout branch %s from %s: %w", branchName, baseBranch, err)
+	remoteBaseRef := remoteName + "/" + baseBranch
+	if err := p.runGit(ctx, repoRoot, "fetch", "--prune", remoteName, baseBranch); err != nil {
+		return fmt.Errorf("fetch base branch %s from %s: %w", baseBranch, remoteName, err)
 	}
-	if err := p.runGit(ctx, repoRoot, "reset", "--hard", baseBranch); err != nil {
-		return fmt.Errorf("reset branch %s to %s: %w", branchName, baseBranch, err)
+	if err := p.runGit(ctx, repoRoot, "checkout", "-B", branchName, remoteBaseRef); err != nil {
+		return fmt.Errorf("checkout branch %s from %s: %w", branchName, remoteBaseRef, err)
+	}
+	if err := p.runGit(ctx, repoRoot, "reset", "--hard", remoteBaseRef); err != nil {
+		return fmt.Errorf("reset branch %s to %s: %w", branchName, remoteBaseRef, err)
 	}
 	if err := p.runGit(ctx, repoRoot, "clean", "-fd"); err != nil {
 		return fmt.Errorf("clean branch %s: %w", branchName, err)

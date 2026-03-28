@@ -225,7 +225,7 @@ func TestSubmitSuccess(t *testing.T) {
 	if git.commitCalls != 1 || git.publishCalls != 1 {
 		t.Fatalf("git calls = commit:%d publish:%d, want 1 each", git.commitCalls, git.publishCalls)
 	}
-	if git.lastCommit.RepoRoot != workspace.RepoRoot || git.lastCommit.DraftRoot != workspace.Root || git.lastCommit.BranchName != workspace.BranchName {
+	if git.lastCommit.RepoRoot != workspace.RepoRoot || git.lastCommit.DraftRoot != workspace.Root || git.lastCommit.RemoteName != "origin" || git.lastCommit.BranchName != workspace.BranchName {
 		t.Fatalf("unexpected commit request: %#v", git.lastCommit)
 	}
 	if git.lastCommit.BaseBranch != "main" || git.lastCommit.Operation != "create" || git.lastCommit.SkillName != "new-skill" {

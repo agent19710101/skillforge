@@ -26,10 +26,23 @@ services:
     environment:
       SKILLFORGE_LISTEN_ADDR: :8080
       SKILLFORGE_REPO_ROOT: /data/skills-repo
+      # Optional live submission settings. Enable these only when
+      # SKILLFORGE_REPO_ROOT points at a writable checked-out clone of the
+      # canonical Forgejo repository instead of the read-only sample repo.
+      # SKILLFORGE_FORGEJO_SERVER_URL: http://forgejo:3000
+      # SKILLFORGE_FORGEJO_REMOTE_NAME: origin
+      # SKILLFORGE_FORGEJO_OWNER: your-org
+      # SKILLFORGE_FORGEJO_REPO: skills
+      # SKILLFORGE_FORGEJO_BASE_BRANCH: main
+      # SKILLFORGE_FORGEJO_TOKEN: replace-me
+      # SKILLFORGE_FORGEJO_AUTH_METHOD: token
     ports:
       - "8080:8080"
     volumes:
       - ./dev/sample-skills-repo:/data/skills-repo:ro
+      # For live submission, replace the read-only sample mount above with a
+      # writable managed working copy of the canonical repository.
+      # - ./dev/skills-repo:/data/skills-repo
 
 volumes:
   forgejo-data:
