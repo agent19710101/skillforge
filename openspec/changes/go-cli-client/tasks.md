@@ -27,5 +27,5 @@
 ## 5. Docs and rollout
 
 - [x] 5.1 Document local CLI usage in the README/dev docs.
-- [ ] 5.2 Open or update the round-3 PR with the first CLI batch.
+- [x] 5.2 Open or update the round-3 PR with the first CLI batch.
 - [x] 5.3 Validate the change strictly.
