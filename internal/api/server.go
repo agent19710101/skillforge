@@ -22,6 +22,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/healthz", s.handleHealth)
 	mux.HandleFunc("/api/v1/skills", s.handleSkills)
 	mux.HandleFunc("/api/v1/skills/", s.handleSkillByName)
+	mux.HandleFunc("/api/v1/search", s.handleSearch)
 	mux.HandleFunc("/api/v1/index/status", s.handleIndexStatus)
 	return mux
 }
@@ -83,6 +84,26 @@ func (s *Server) handleSkillByName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, skill)
+}
+
+func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		return
+	}
+
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if q == "" {
+		writeError(w, http.StatusBadRequest, "invalid_query", "missing q parameter")
+		return
+	}
+
+	skills := s.index.Search(q)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"query":  q,
+		"skills": skills,
+		"total":  len(skills),
+	})
 }
 
 func (s *Server) handleIndexStatus(w http.ResponseWriter, r *http.Request) {

@@ -11,7 +11,7 @@
 - [x] 2.1 Implement an in-process derived index for list/search/get operations.
 - [x] 2.2 Add `GET /api/v1/skills` with pagination and basic filtering.
 - [x] 2.3 Add `GET /api/v1/skills/:name` for skill detail retrieval.
-- [ ] 2.4 Add `GET /api/v1/search` for metadata-oriented search.
+- [x] 2.4 Add `GET /api/v1/search` for metadata-oriented search.
 - [x] 2.5 Add `GET /api/v1/index/status` for scan/index health visibility.
 
 ## 3. Self-hosted development stack

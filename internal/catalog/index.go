@@ -84,6 +84,21 @@ func (i *Index) Get(name string) (SkillRecord, bool) {
 	return skill, ok
 }
 
+func (i *Index) Search(query string) []SkillRecord {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return []SkillRecord{}
+	}
+
+	matches := make([]SkillRecord, 0, len(i.result.Skills))
+	for _, skill := range i.result.Skills {
+		if matchesSearch(skill, q) {
+			matches = append(matches, skill)
+		}
+	}
+	return matches
+}
+
 func (i *Index) Status() IndexStatus {
 	return IndexStatus{
 		Root:       i.result.Root,
@@ -106,6 +121,21 @@ func matchesValidation(skill SkillRecord, filter string) bool {
 	default:
 		return true
 	}
+}
+
+func matchesSearch(skill SkillRecord, query string) bool {
+	if strings.Contains(strings.ToLower(skill.Name), query) {
+		return true
+	}
+	if strings.Contains(strings.ToLower(skill.Description), query) {
+		return true
+	}
+	for _, tag := range skill.Tags {
+		if strings.Contains(strings.ToLower(tag), query) {
+			return true
+		}
+	}
+	return false
 }
 
 func gitRevision(root string) string {
