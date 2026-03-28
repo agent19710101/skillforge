@@ -25,8 +25,8 @@ const (
 )
 
 var (
-	buildGitPublisher = func(draft.SubmissionConfig) (draft.GitPublisher, error) {
-		return nil, nil
+	buildGitPublisher = func(cfg draft.SubmissionConfig) (draft.GitPublisher, error) {
+		return draft.NewManagedGitPublisher(cfg.BaseBranch)
 	}
 	buildForgejoClient = func(draft.SubmissionConfig) (draft.ForgejoClient, error) {
 		return nil, nil

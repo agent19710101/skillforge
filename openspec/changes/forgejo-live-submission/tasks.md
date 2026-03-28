@@ -9,10 +9,10 @@
 
 ## 2. Real Git publisher
 
-- [ ] 2.1 Implement a concrete Git publisher that operates on a managed canonical working copy.
-- [ ] 2.2 Materialize only the intended `skills/<skill-name>/` draft changes from the temp workspace into the canonical working copy.
-- [ ] 2.3 Create/reset the submission branch from the configured base branch, commit the changes, and push to the configured remote.
-- [ ] 2.4 Add tests using temp Git repositories for publish success and failure paths.
+- [x] 2.1 Implement a concrete Git publisher that operates on a managed canonical working copy.
+- [x] 2.2 Materialize only the intended `skills/<skill-name>/` draft changes from the temp workspace into the canonical working copy.
+- [x] 2.3 Create/reset the submission branch from the configured base branch, commit the changes, and push to the configured remote.
+- [x] 2.4 Add tests using temp Git repositories for publish success and failure paths.
 
 ## 3. Real Forgejo PR client
 
