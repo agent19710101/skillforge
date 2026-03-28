@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -21,9 +22,11 @@ type Client struct {
 }
 
 type APIError struct {
-	StatusCode int    `json:"statusCode"`
-	Code       string `json:"error"`
-	Message    string `json:"message"`
+	StatusCode int                    `json:"statusCode"`
+	Code       string                 `json:"error"`
+	Message    string                 `json:"message"`
+	Validation *DraftValidation       `json:"validation,omitempty"`
+	Submission *DraftSubmissionStatus `json:"submission,omitempty"`
 }
 
 func (e *APIError) Error() string {
@@ -53,6 +56,50 @@ type SearchResponse struct {
 	Query  string                `json:"query"`
 	Skills []catalog.SkillRecord `json:"skills"`
 	Total  int                   `json:"total"`
+}
+
+type DraftCreateRequest struct {
+	Operation string `json:"operation"`
+	SkillName string `json:"skillName"`
+	Content   string `json:"content,omitempty"`
+}
+
+type DraftValidation struct {
+	Valid    bool              `json:"valid"`
+	Findings []catalog.Finding `json:"findings,omitempty"`
+}
+
+type DraftSubmissionStatus struct {
+	Enabled    bool   `json:"enabled"`
+	BaseBranch string `json:"baseBranch,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+}
+
+type DraftResponse struct {
+	ID         string                `json:"id"`
+	Operation  string                `json:"operation"`
+	SkillName  string                `json:"skillName"`
+	BranchName string                `json:"branchName"`
+	CreatedAt  string                `json:"createdAt"`
+	Validation DraftValidation       `json:"validation"`
+	Submission DraftSubmissionStatus `json:"submission"`
+}
+
+type PullRequestRef struct {
+	Number int    `json:"number,omitempty"`
+	ID     int64  `json:"id,omitempty"`
+	URL    string `json:"url,omitempty"`
+}
+
+type DraftSubmissionResponse struct {
+	ID          string          `json:"id"`
+	Operation   string          `json:"operation"`
+	SkillName   string          `json:"skillName"`
+	BranchName  string          `json:"branchName"`
+	BaseBranch  string          `json:"baseBranch"`
+	CommitHash  string          `json:"commitHash,omitempty"`
+	PullRequest *PullRequestRef `json:"pullRequest,omitempty"`
+	Validation  DraftValidation `json:"validation"`
 }
 
 func New(baseURL string) (*Client, error) {
@@ -102,7 +149,29 @@ func (c *Client) GetSkill(ctx context.Context, name string) (catalog.SkillRecord
 	return skill, err
 }
 
+func (c *Client) CreateDraft(ctx context.Context, req DraftCreateRequest) (DraftResponse, error) {
+	var resp DraftResponse
+	err := c.sendJSON(ctx, http.MethodPost, "/api/v1/drafts", nil, req, &resp)
+	return resp, err
+}
+
+func (c *Client) GetDraft(ctx context.Context, id string) (DraftResponse, error) {
+	var resp DraftResponse
+	err := c.sendJSON(ctx, http.MethodGet, "/api/v1/drafts/"+url.PathEscape(strings.TrimSpace(id)), nil, nil, &resp)
+	return resp, err
+}
+
+func (c *Client) SubmitDraft(ctx context.Context, id string) (DraftSubmissionResponse, error) {
+	var resp DraftSubmissionResponse
+	err := c.sendJSON(ctx, http.MethodPost, "/api/v1/drafts/"+url.PathEscape(strings.TrimSpace(id))+"/submit", nil, nil, &resp)
+	return resp, err
+}
+
 func (c *Client) getJSON(ctx context.Context, path string, query url.Values, into any) error {
+	return c.sendJSON(ctx, http.MethodGet, path, query, nil, into)
+}
+
+func (c *Client) sendJSON(ctx context.Context, method, path string, query url.Values, body any, into any) error {
 	if c == nil {
 		return fmt.Errorf("client is required")
 	}
@@ -116,12 +185,24 @@ func (c *Client) getJSON(ctx context.Context, path string, query url.Values, int
 	}
 	endpoint := c.BaseURL.ResolveReference(rel)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	var requestBody io.Reader
+	if body != nil {
+		payload, err := json.Marshal(body)
+		if err != nil {
+			return fmt.Errorf("encode request: %w", err)
+		}
+		requestBody = bytes.NewReader(payload)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, endpoint.String(), requestBody)
 	if err != nil {
 		return fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", defaultUserAgent)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	httpClient := c.HTTPClient
 	if httpClient == nil {

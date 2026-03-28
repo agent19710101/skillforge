@@ -48,16 +48,18 @@ See [`docs/dev-stack.md`](docs/dev-stack.md) for the required submission environ
 
 ## CLI preview
 
-The first Go CLI slice now supports read-path commands against a running Skillforge API:
+The first Go CLI slice now supports read and draft lifecycle commands against a running Skillforge API:
 
 ```bash
 go run ./cmd/skillforge list
 go run ./cmd/skillforge search git
 go run ./cmd/skillforge get git-pr-review
 go run ./cmd/skillforge list --server http://localhost:8080 --json
-```
 
-The draft lifecycle subcommands are the next CLI batch.
+go run ./cmd/skillforge draft create --operation create --skill new-skill --file ./skills/new-skill/SKILL.md
+go run ./cmd/skillforge draft status draft01
+go run ./cmd/skillforge draft submit draft01
+```
 
 ## License
 

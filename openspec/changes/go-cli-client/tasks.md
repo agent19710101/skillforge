@@ -19,10 +19,10 @@
 
 ## 4. Draft lifecycle commands
 
-- [ ] 4.1 Implement `skillforge draft create`.
-- [ ] 4.2 Implement `skillforge draft status`.
-- [ ] 4.3 Implement `skillforge draft submit`.
-- [ ] 4.4 Add tests for submission-disabled and validation-error handling.
+- [x] 4.1 Implement `skillforge draft create`.
+- [x] 4.2 Implement `skillforge draft status`.
+- [x] 4.3 Implement `skillforge draft submit`.
+- [x] 4.4 Add tests for submission-disabled and validation-error handling.
 
 ## 5. Docs and rollout
 
