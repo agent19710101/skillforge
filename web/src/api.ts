@@ -45,6 +45,7 @@ export interface ApiErrorPayload {
 }
 
 const configuredBase = (import.meta.env.VITE_API_BASE_URL ?? '').trim()
+const catalogPageSize = 200
 
 function normalizedBase(): string {
   if (configuredBase === '') {
@@ -80,8 +81,40 @@ async function getJson<T>(path: string, query?: URLSearchParams): Promise<T> {
   return (await response.json()) as T
 }
 
-export function listSkills(): Promise<ListSkillsResponse> {
-  return getJson<ListSkillsResponse>('/api/v1/skills')
+export function listSkills(offset = 0, limit = catalogPageSize): Promise<ListSkillsResponse> {
+  const query = new URLSearchParams()
+  if (offset > 0) {
+    query.set('offset', String(offset))
+  }
+  query.set('limit', String(limit))
+  return getJson<ListSkillsResponse>('/api/v1/skills', query)
+}
+
+export async function listAllSkills(): Promise<ListSkillsResponse> {
+  const skills: SkillRecord[] = []
+  let offset = 0
+  let total = 0
+  let pageLimit = catalogPageSize
+
+  while (true) {
+    const page = await listSkills(offset, catalogPageSize)
+    skills.push(...page.skills)
+    total = page.total
+    pageLimit = page.limit
+
+    if (skills.length >= total || page.skills.length === 0) {
+      break
+    }
+
+    offset = page.offset + page.skills.length
+  }
+
+  return {
+    skills,
+    total,
+    offset: 0,
+    limit: pageLimit,
+  }
 }
 
 export function searchSkills(queryText: string): Promise<SearchSkillsResponse> {

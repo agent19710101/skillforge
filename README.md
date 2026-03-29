@@ -63,7 +63,7 @@ go run ./cmd/skillforge draft submit draft01
 
 ## Web UI preview
 
-The first browser UI slice now lives under [`web/`](web/) and currently focuses on read-only catalog discovery.
+The first browser UI slice now lives under [`web/`](web/) and currently focuses on read-only catalog discovery. Browse mode now follows the paginated catalog API until it has the full skill list, so larger repositories are no longer silently truncated at the server's default first page.
 
 Run it locally next to the API with:
 

@@ -7,6 +7,7 @@ This package contains the first read-only browser UI for Skillforge.
 The current UI supports:
 
 - skill list browsing
+- paginated catalog loading so browse mode can reach the full catalog instead of only the API's first page
 - full-text search
 - skill detail viewing
 - URL-backed `?q=` search and `?skill=` selection for shareable deep links

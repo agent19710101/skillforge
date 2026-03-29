@@ -13,11 +13,12 @@ afterEach(() => {
 describe('App', () => {
   it('loads the skill list and selected skill detail', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.endsWith('/api/v1/index/status')) {
+      const url = parseUrl(input)
+      if (url.pathname === '/api/v1/index/status') {
         return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 2 })
       }
-      if (url.endsWith('/api/v1/skills')) {
+      if (url.pathname === '/api/v1/skills') {
+        expect(url.searchParams.get('limit')).toBe('200')
         return response({
           skills: [
             { name: 'git-pr-review', description: 'Review PRs', path: 'skills/git-pr-review/SKILL.md', valid: true },
@@ -25,10 +26,10 @@ describe('App', () => {
           ],
           total: 2,
           offset: 0,
-          limit: 50,
+          limit: 200,
         })
       }
-      if (url.endsWith('/api/v1/skills/git-pr-review')) {
+      if (url.pathname === '/api/v1/skills/git-pr-review') {
         return response({
           name: 'git-pr-review',
           description: 'Review PRs',
@@ -53,11 +54,12 @@ describe('App', () => {
     window.history.replaceState({}, '', '/?q=pdf&skill=pdf-search-helper')
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.endsWith('/api/v1/index/status')) {
+      const url = parseUrl(input)
+      if (url.pathname === '/api/v1/index/status') {
         return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 1 })
       }
-      if (url.includes('/api/v1/search?q=pdf')) {
+      if (url.pathname === '/api/v1/search') {
+        expect(url.searchParams.get('q')).toBe('pdf')
         return response({
           query: 'pdf',
           skills: [
@@ -66,7 +68,7 @@ describe('App', () => {
           total: 1,
         })
       }
-      if (url.endsWith('/api/v1/skills/pdf-search-helper')) {
+      if (url.pathname === '/api/v1/skills/pdf-search-helper') {
         return response({
           name: 'pdf-search-helper',
           description: 'Find text in PDFs',
@@ -86,13 +88,87 @@ describe('App', () => {
     expect(await screen.findByText('Use pdftotext first.')).toBeInTheDocument()
   })
 
+  it('loads every catalog page before resolving a deep-linked browse selection', async () => {
+    window.history.replaceState({}, '', '/?skill=skill-201')
+
+    const firstPageSkills = Array.from({ length: 200 }, (_, index) => ({
+      name: `skill-${index + 1}`,
+      description: `Skill ${index + 1}`,
+      path: `skills/skill-${index + 1}/SKILL.md`,
+      valid: true,
+    }))
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = parseUrl(input)
+      if (url.pathname === '/api/v1/index/status') {
+        return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 201 })
+      }
+      if (url.pathname === '/api/v1/skills') {
+        const offset = Number(url.searchParams.get('offset') ?? '0')
+        const limit = Number(url.searchParams.get('limit') ?? '0')
+        expect(limit).toBe(200)
+
+        if (offset === 0) {
+          return response({
+            skills: firstPageSkills,
+            total: 201,
+            offset: 0,
+            limit,
+          })
+        }
+
+        if (offset === 200) {
+          return response({
+            skills: [
+              {
+                name: 'skill-201',
+                description: 'Skill 201',
+                path: 'skills/skill-201/SKILL.md',
+                valid: true,
+              },
+            ],
+            total: 201,
+            offset: 200,
+            limit,
+          })
+        }
+      }
+      if (url.pathname === '/api/v1/skills/skill-201') {
+        return response({
+          name: 'skill-201',
+          description: 'Skill 201',
+          path: 'skills/skill-201/SKILL.md',
+          body: 'Loaded from the second browse page.',
+          valid: true,
+        })
+      }
+      if (url.pathname.startsWith('/api/v1/skills/skill-')) {
+        const name = decodeURIComponent(url.pathname.replace('/api/v1/skills/', ''))
+        return response({
+          name,
+          description: `${name} description`,
+          path: `skills/${name}/SKILL.md`,
+          valid: true,
+        })
+      }
+      throw new Error(`unexpected URL ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    expect(await screen.findByText('Loaded from the second browse page.')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/skills?limit=200'), expect.any(Object))
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/skills?offset=200&limit=200'), expect.any(Object))
+  })
+
   it('updates the URL when the selected skill changes', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.endsWith('/api/v1/index/status')) {
+      const url = parseUrl(input)
+      if (url.pathname === '/api/v1/index/status') {
         return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 2 })
       }
-      if (url.endsWith('/api/v1/skills')) {
+      if (url.pathname === '/api/v1/skills') {
         return response({
           skills: [
             { name: 'git-pr-review', description: 'Review PRs', path: 'skills/git-pr-review/SKILL.md', valid: true },
@@ -100,10 +176,10 @@ describe('App', () => {
           ],
           total: 2,
           offset: 0,
-          limit: 50,
+          limit: 200,
         })
       }
-      if (url.endsWith('/api/v1/skills/git-pr-review')) {
+      if (url.pathname === '/api/v1/skills/git-pr-review') {
         return response({
           name: 'git-pr-review',
           description: 'Review PRs',
@@ -111,7 +187,7 @@ describe('App', () => {
           valid: true,
         })
       }
-      if (url.endsWith('/api/v1/skills/pdf-search-helper')) {
+      if (url.pathname === '/api/v1/skills/pdf-search-helper') {
         return response({
           name: 'pdf-search-helper',
           description: 'Find text in PDFs',
@@ -137,15 +213,16 @@ describe('App', () => {
 
   it('shows an empty search state and syncs the query into the URL', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.endsWith('/api/v1/index/status')) {
+      const url = parseUrl(input)
+      if (url.pathname === '/api/v1/index/status') {
         return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 0 })
       }
-      if (url.includes('/api/v1/search?q=nomatch')) {
+      if (url.pathname === '/api/v1/search') {
+        expect(url.searchParams.get('q')).toBe('nomatch')
         return response({ query: 'nomatch', skills: [], total: 0 })
       }
-      if (url.endsWith('/api/v1/skills')) {
-        return response({ skills: [], total: 0, offset: 0, limit: 50 })
+      if (url.pathname === '/api/v1/skills') {
+        return response({ skills: [], total: 0, offset: 0, limit: 200 })
       }
       throw new Error(`unexpected URL ${url}`)
     })
@@ -163,11 +240,11 @@ describe('App', () => {
 
   it('shows a loading error when the catalog request fails', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.endsWith('/api/v1/index/status')) {
+      const url = parseUrl(input)
+      if (url.pathname === '/api/v1/index/status') {
         return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 0 })
       }
-      if (url.endsWith('/api/v1/skills')) {
+      if (url.pathname === '/api/v1/skills') {
         return response({ error: 'unavailable', message: 'catalog unavailable' }, 503)
       }
       throw new Error(`unexpected URL ${url}`)
@@ -179,6 +256,10 @@ describe('App', () => {
     expect(await screen.findByText('Could not load skills: catalog unavailable')).toBeInTheDocument()
   })
 })
+
+function parseUrl(input: RequestInfo | URL): URL {
+  return new URL(String(input), 'http://localhost')
+}
 
 function response(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {

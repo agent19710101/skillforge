@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import './App.css'
-import { getIndexStatus, getSkill, listSkills, searchSkills, type IndexStatus, type SkillRecord } from './api'
+import { getIndexStatus, getSkill, listAllSkills, searchSkills, type IndexStatus, type SkillRecord } from './api'
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -49,7 +49,7 @@ function App() {
     setSkillsState('loading')
     setSkillsError('')
 
-    const request = submittedQuery.trim() === '' ? listSkills() : searchSkills(submittedQuery)
+    const request = submittedQuery.trim() === '' ? listAllSkills() : searchSkills(submittedQuery)
 
     request
       .then((response) => {
