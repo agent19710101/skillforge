@@ -9,6 +9,7 @@ The current UI supports:
 - skill list browsing
 - full-text search
 - skill detail viewing
+- URL-backed `?q=` search and `?skill=` selection for shareable deep links
 - basic loading, empty, and error states
 
 It intentionally does **not** include draft authoring or submission yet.

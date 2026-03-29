@@ -4,17 +4,27 @@ import { getIndexStatus, getSkill, listSkills, searchSkills, type IndexStatus, t
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error'
 
+type UiLocationState = {
+  query: string
+  skill: string
+}
+
 function App() {
-  const [query, setQuery] = useState('')
-  const [submittedQuery, setSubmittedQuery] = useState('')
+  const initialLocationState = readLocationState()
+  const [query, setQuery] = useState(initialLocationState.query)
+  const [submittedQuery, setSubmittedQuery] = useState(initialLocationState.query)
   const [skills, setSkills] = useState<SkillRecord[]>([])
   const [skillsState, setSkillsState] = useState<LoadState>('idle')
   const [skillsError, setSkillsError] = useState('')
-  const [selectedSkillName, setSelectedSkillName] = useState('')
+  const [selectedSkillName, setSelectedSkillName] = useState(initialLocationState.skill)
   const [selectedSkill, setSelectedSkill] = useState<SkillRecord | null>(null)
   const [detailState, setDetailState] = useState<LoadState>('idle')
   const [detailError, setDetailError] = useState('')
   const [indexStatus, setIndexStatus] = useState<IndexStatus | null>(null)
+
+  useEffect(() => {
+    syncLocationState({ query: submittedQuery, skill: selectedSkillName })
+  }, [submittedQuery, selectedSkillName])
 
   useEffect(() => {
     let cancelled = false
@@ -119,6 +129,7 @@ function App() {
   const onReset = () => {
     setQuery('')
     setSubmittedQuery('')
+    setSelectedSkillName('')
   }
 
   return (
@@ -238,6 +249,34 @@ function App() {
       </main>
     </div>
   )
+}
+
+function readLocationState(): UiLocationState {
+  const params = new URLSearchParams(window.location.search)
+  return {
+    query: params.get('q')?.trim() ?? '',
+    skill: params.get('skill')?.trim() ?? '',
+  }
+}
+
+function syncLocationState(state: UiLocationState): void {
+  const params = new URLSearchParams(window.location.search)
+
+  if (state.query) {
+    params.set('q', state.query)
+  } else {
+    params.delete('q')
+  }
+
+  if (state.skill) {
+    params.set('skill', state.skill)
+  } else {
+    params.delete('skill')
+  }
+
+  const search = params.toString()
+  const nextUrl = search === '' ? window.location.pathname : `${window.location.pathname}?${search}`
+  window.history.replaceState({}, '', nextUrl)
 }
 
 export default App

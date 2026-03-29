@@ -21,6 +21,11 @@ The first web UI slice SHALL support search and skill detail inspection without 
 - **THEN** the UI calls `GET /api/v1/skills/{name}`
 - **AND** shows the selected skill details
 
+#### Scenario: Open a deep link into the current read state
+- **WHEN** a user opens the web UI with `?q=` and/or `?skill=` query parameters
+- **THEN** the UI initializes its read state from those URL values
+- **AND** preserves the current submitted query and selected skill in the URL as the user navigates
+
 ### Requirement: Surface representative runtime states honestly
 The first web UI slice SHALL expose loading and error states instead of silently failing.
 

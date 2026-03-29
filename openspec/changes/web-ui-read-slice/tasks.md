@@ -17,6 +17,7 @@
 - [x] 3.3 Implement a skill detail view.
 - [x] 3.4 Add loading, empty, and error states.
 - [x] 3.5 Add targeted UI tests for representative states.
+- [x] 3.6 Preserve search/selection in the URL for shareable deep links.
 
 ## 4. Docs and rollout
 
