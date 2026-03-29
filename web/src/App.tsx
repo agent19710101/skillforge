@@ -506,7 +506,36 @@ function App() {
               </section>
             ) : null}
 
-            {submitState === 'error' ? <p className="state-message error">Could not submit draft: {submitError}</p> : null}
+            {submitState === 'error' ? (
+              <section className="submission-result" aria-label="submit failure details">
+                <p className="state-message error">Could not submit draft: {submitError}</p>
+                {currentDraft ? (
+                  <>
+                    <h3>Latest backend status after failed submit</h3>
+                    <p className="state-message">
+                      Submission is {currentDraft.submission.enabled ? 'enabled' : 'disabled'}.
+                      {currentDraft.submission.baseBranch ? ` Base branch: ${currentDraft.submission.baseBranch}.` : ''}
+                      {currentDraft.submission.reason ? ` ${currentDraft.submission.reason}` : ''}
+                    </p>
+                    <p className="state-message">
+                      {currentDraft.validation.valid
+                        ? 'Validation still reports the draft as valid.'
+                        : 'Validation still reports findings on the draft.'}
+                    </p>
+                    {currentDraft.validation.findings && currentDraft.validation.findings.length > 0 ? (
+                      <ul className="findings-list">
+                        {currentDraft.validation.findings.map((finding) => (
+                          <li key={`${finding.code}-${finding.path ?? finding.message}`}>
+                            <strong>{finding.code}</strong>: {finding.message}
+                            {finding.path ? <span className="muted"> ({finding.path})</span> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </>
+                ) : null}
+              </section>
+            ) : null}
 
             {submissionResult ? (
               <section className="submission-result" aria-label="submission result">

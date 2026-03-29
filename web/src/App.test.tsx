@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
@@ -290,6 +290,85 @@ describe('App', () => {
 
     expect(await screen.findByText('draft-delete-01')).toBeInTheDocument()
     expect(await screen.findByText(/Submission is disabled\. submission backend is not configured/)).toBeInTheDocument()
+  })
+
+  it('surfaces backend validation and submission details after a failed submit attempt', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = parseUrl(input)
+      if (url.pathname === '/api/v1/index/status') {
+        return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 1 })
+      }
+      if (url.pathname === '/api/v1/skills') {
+        return response({
+          skills: [{ name: 'git-pr-review', description: 'Review PRs', path: 'skills/git-pr-review/SKILL.md', valid: true }],
+          total: 1,
+          offset: 0,
+          limit: 200,
+        })
+      }
+      if (url.pathname === '/api/v1/skills/git-pr-review') {
+        return response({
+          name: 'git-pr-review',
+          description: 'Review PRs',
+          path: 'skills/git-pr-review/SKILL.md',
+          body: '---\nname: git-pr-review\ndescription: Review PRs\n---\n# git-pr-review\n',
+          valid: true,
+        })
+      }
+      if (url.pathname === '/api/v1/drafts') {
+        expect(parseJsonBody(init)).toEqual({
+          operation: 'update',
+          skillName: 'git-pr-review',
+          content: '---\nname: git-pr-review\ndescription: Review PRs\n---\n# git-pr-review\n',
+        })
+        return response({
+          id: 'draft-submit-error',
+          operation: 'update',
+          skillName: 'git-pr-review',
+          branchName: 'skillforge/update/git-pr-review/draft-submit-error',
+          createdAt: '2026-03-29T06:00:00Z',
+          validation: { valid: true },
+          submission: { enabled: true, baseBranch: 'main' },
+        })
+      }
+      if (url.pathname === '/api/v1/drafts/draft-submit-error/submit') {
+        return response(
+          {
+            error: 'submission_failed',
+            message: 'remote rejected the branch update',
+            validation: {
+              valid: false,
+              findings: [{ code: 'frontmatter', message: 'description is missing', path: 'description' }],
+            },
+            submission: {
+              enabled: false,
+              baseBranch: 'main',
+              reason: 'fix validation findings before retrying submission',
+            },
+          },
+          409,
+        )
+      }
+      throw new Error(`unexpected URL ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    expect(await screen.findByText('Body preview')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Prefill update from selected skill' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create draft' }))
+    expect(await screen.findByText('draft-submit-error')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit draft' }))
+
+    const failureSection = await screen.findByLabelText('submit failure details')
+    expect(within(failureSection).getByText('Could not submit draft: remote rejected the branch update')).toBeInTheDocument()
+    expect(within(failureSection).getByText('Latest backend status after failed submit')).toBeInTheDocument()
+    expect(within(failureSection).getByText(/Submission is disabled\. Base branch: main\. fix validation findings before retrying submission/)).toBeInTheDocument()
+    expect(within(failureSection).getByText('Validation still reports findings on the draft.')).toBeInTheDocument()
+    expect(within(failureSection).getByText('frontmatter')).toBeInTheDocument()
+    expect(failureSection).toHaveTextContent('description is missing')
   })
 
   it('shows a draft creation error when the write request fails', async () => {
