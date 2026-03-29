@@ -61,6 +61,20 @@ go run ./cmd/skillforge draft status draft01
 go run ./cmd/skillforge draft submit draft01
 ```
 
+## Web UI preview
+
+The first browser UI slice now lives under [`web/`](web/) and currently focuses on read-only catalog discovery. Browse mode now follows the paginated catalog API until it has the full skill list, so larger repositories are no longer silently truncated at the server's default first page.
+
+Run it locally next to the API with:
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+By default the Vite dev server proxies `/api/*` requests to `http://localhost:8080`. Set `VITE_API_BASE_URL` when the API is mounted elsewhere.
+
 ## License
 
 MIT

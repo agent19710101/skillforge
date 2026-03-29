@@ -1,0 +1,46 @@
+name: web-ui
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-ui.yml'
+  push:
+    branches:
+      - main
+      - 'feat/**'
+    paths:
+      - 'web/**'
+      - '.github/workflows/web-ui.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Build web UI
+        run: npm run build
+
+      - name: Test web UI
+        run: npm test
+
+      - name: Lint web UI
+        run: npm run lint

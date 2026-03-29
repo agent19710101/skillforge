@@ -88,6 +88,20 @@ A minimal local verification flow for draft-to-PR submission is:
 7. submit the draft with `POST /api/v1/drafts/{id}/submit`
 8. confirm the response includes the published branch, base branch, commit hash, pull-request number, and pull-request URL
 
+## Web UI development
+
+The first browser UI lives in `web/` and is intentionally read-only in this slice.
+
+Run it locally with:
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+The Vite dev server proxies `/api/*` to `http://localhost:8080` by default. Set `VITE_API_BASE_URL` when the UI should talk to a different API origin or path prefix.
+
 ## Notes
 
 - The sample Compose mount is intentionally read-only and is suitable only for browse/search verification.
