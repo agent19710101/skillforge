@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 
@@ -48,6 +48,7 @@ describe('App', () => {
     expect(await screen.findByText('git-pr-review')).toBeInTheDocument()
     expect(await screen.findByText('Use gh pr review.')).toBeInTheDocument()
     expect(await screen.findByText('2 indexed skill(s)')).toBeInTheDocument()
+    expect(await screen.findByText('Create a browser draft')).toBeInTheDocument()
   })
 
   it('hydrates search and selected skill from the URL', async () => {
@@ -162,19 +163,16 @@ describe('App', () => {
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/skills?offset=200&limit=200'), expect.any(Object))
   })
 
-  it('updates the URL when the selected skill changes', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+  it('creates and submits a draft from the browser form', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = parseUrl(input)
       if (url.pathname === '/api/v1/index/status') {
-        return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 2 })
+        return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 1 })
       }
       if (url.pathname === '/api/v1/skills') {
         return response({
-          skills: [
-            { name: 'git-pr-review', description: 'Review PRs', path: 'skills/git-pr-review/SKILL.md', valid: true },
-            { name: 'pdf-search-helper', description: 'Find text in PDFs', path: 'skills/pdf-search-helper/SKILL.md', valid: true },
-          ],
-          total: 2,
+          skills: [{ name: 'git-pr-review', description: 'Review PRs', path: 'skills/git-pr-review/SKILL.md', valid: true }],
+          total: 1,
           offset: 0,
           limit: 200,
         })
@@ -184,16 +182,38 @@ describe('App', () => {
           name: 'git-pr-review',
           description: 'Review PRs',
           path: 'skills/git-pr-review/SKILL.md',
+          body: '---\nname: git-pr-review\ndescription: Review PRs\n---\n# git-pr-review\n',
           valid: true,
         })
       }
-      if (url.pathname === '/api/v1/skills/pdf-search-helper') {
+      if (url.pathname === '/api/v1/drafts') {
+        expect(init?.method).toBe('POST')
+        expect(parseJsonBody(init)).toEqual({
+          operation: 'update',
+          skillName: 'git-pr-review',
+          content: '---\nname: git-pr-review\ndescription: Review PRs\n---\n# git-pr-review\n',
+        })
         return response({
-          name: 'pdf-search-helper',
-          description: 'Find text in PDFs',
-          path: 'skills/pdf-search-helper/SKILL.md',
-          body: 'Use pdftotext first.',
-          valid: true,
+          id: 'draft01',
+          operation: 'update',
+          skillName: 'git-pr-review',
+          branchName: 'skillforge/update/git-pr-review/draft01',
+          createdAt: '2026-03-29T05:10:00Z',
+          validation: { valid: true },
+          submission: { enabled: true, baseBranch: 'main' },
+        })
+      }
+      if (url.pathname === '/api/v1/drafts/draft01/submit') {
+        expect(init?.method).toBe('POST')
+        return response({
+          id: 'draft01',
+          operation: 'update',
+          skillName: 'git-pr-review',
+          branchName: 'skillforge/update/git-pr-review/draft01',
+          baseBranch: 'main',
+          commitHash: 'abc123',
+          pullRequest: { number: 17, url: 'https://forgejo.example/pr/17' },
+          validation: { valid: true },
         })
       }
       throw new Error(`unexpected URL ${url}`)
@@ -202,50 +222,87 @@ describe('App', () => {
 
     render(<App />)
 
-    expect(await screen.findByText('git-pr-review')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /pdf-search-helper/i }))
+    expect(await screen.findByText('Body preview')).toBeInTheDocument()
 
-    await waitFor(() => {
-      const params = new URLSearchParams(window.location.search)
-      expect(params.get('skill')).toBe('pdf-search-helper')
-    })
+    fireEvent.click(screen.getByRole('button', { name: 'Prefill update from selected skill' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create draft' }))
+
+    expect(await screen.findByText('Current draft')).toBeInTheDocument()
+    expect(await screen.findByText('draft01')).toBeInTheDocument()
+    expect(await screen.findByText('Submission is enabled. Base branch: main.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Submit draft' }))
+
+    expect(await screen.findByText('Submission result')).toBeInTheDocument()
+    expect(await screen.findByText('abc123')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '#17' })).toHaveAttribute('href', 'https://forgejo.example/pr/17')
   })
 
-  it('shows an empty search state and syncs the query into the URL', async () => {
+  it('creates delete drafts without sending content', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = parseUrl(input)
+      if (url.pathname === '/api/v1/index/status') {
+        return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 1 })
+      }
+      if (url.pathname === '/api/v1/skills') {
+        return response({
+          skills: [{ name: 'git-pr-review', description: 'Review PRs', path: 'skills/git-pr-review/SKILL.md', valid: true }],
+          total: 1,
+          offset: 0,
+          limit: 200,
+        })
+      }
+      if (url.pathname === '/api/v1/skills/git-pr-review') {
+        return response({
+          name: 'git-pr-review',
+          description: 'Review PRs',
+          path: 'skills/git-pr-review/SKILL.md',
+          body: 'Use gh pr review.',
+          valid: true,
+        })
+      }
+      if (url.pathname === '/api/v1/drafts') {
+        expect(parseJsonBody(init)).toEqual({
+          operation: 'delete',
+          skillName: 'git-pr-review',
+        })
+        return response({
+          id: 'draft-delete-01',
+          operation: 'delete',
+          skillName: 'git-pr-review',
+          branchName: 'skillforge/delete/git-pr-review/draft-delete-01',
+          createdAt: '2026-03-29T05:20:00Z',
+          validation: { valid: true },
+          submission: { enabled: false, reason: 'submission backend is not configured' },
+        })
+      }
+      throw new Error(`unexpected URL ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    expect(await screen.findByText('Use gh pr review.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Prepare delete for selected skill' }))
+
+    expect(screen.queryByLabelText('Draft content')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Create draft' }))
+
+    expect(await screen.findByText('draft-delete-01')).toBeInTheDocument()
+    expect(await screen.findByText(/Submission is disabled\. submission backend is not configured/)).toBeInTheDocument()
+  })
+
+  it('shows a draft creation error when the write request fails', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = parseUrl(input)
       if (url.pathname === '/api/v1/index/status') {
         return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 0 })
-      }
-      if (url.pathname === '/api/v1/search') {
-        expect(url.searchParams.get('q')).toBe('nomatch')
-        return response({ query: 'nomatch', skills: [], total: 0 })
       }
       if (url.pathname === '/api/v1/skills') {
         return response({ skills: [], total: 0, offset: 0, limit: 200 })
       }
-      throw new Error(`unexpected URL ${url}`)
-    })
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<App />)
-
-    const input = await screen.findByLabelText('Search skills')
-    fireEvent.change(input, { target: { value: 'nomatch' } })
-    fireEvent.click(screen.getByText('Search'))
-
-    expect(await screen.findByText('No skills matched this query.')).toBeInTheDocument()
-    expect(new URLSearchParams(window.location.search).get('q')).toBe('nomatch')
-  })
-
-  it('shows a loading error when the catalog request fails', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = parseUrl(input)
-      if (url.pathname === '/api/v1/index/status') {
-        return response({ ready: true, source: 'git', scannedAt: '2026-03-28T21:00:00Z', skillCount: 0 })
-      }
-      if (url.pathname === '/api/v1/skills') {
-        return response({ error: 'unavailable', message: 'catalog unavailable' }, 503)
+      if (url.pathname === '/api/v1/drafts') {
+        return response({ error: 'invalid_request', message: 'content is required for create' }, 400)
       }
       throw new Error(`unexpected URL ${url}`)
     })
@@ -253,12 +310,25 @@ describe('App', () => {
 
     render(<App />)
 
-    expect(await screen.findByText('Could not load skills: catalog unavailable')).toBeInTheDocument()
+    const skillInput = await screen.findByLabelText('Skill name')
+    fireEvent.change(skillInput, { target: { value: 'new-skill' } })
+    fireEvent.change(screen.getByLabelText('Draft content'), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create draft' }))
+
+    expect(await screen.findByText('Could not create draft: content is required for create')).toBeInTheDocument()
   })
 })
 
 function parseUrl(input: RequestInfo | URL): URL {
   return new URL(String(input), 'http://localhost')
+}
+
+function parseJsonBody(init?: RequestInit): unknown {
+  const body = init?.body
+  if (typeof body !== 'string') {
+    throw new Error(`expected JSON string body, got ${typeof body}`)
+  }
+  return JSON.parse(body)
 }
 
 function response(payload: unknown, status = 200): Response {

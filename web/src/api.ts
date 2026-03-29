@@ -39,9 +39,71 @@ export interface IndexStatus {
   }
 }
 
+export type DraftOperation = 'create' | 'update' | 'delete'
+
+export interface DraftValidation {
+  valid: boolean
+  findings?: ValidationFinding[]
+}
+
+export interface DraftSubmissionStatus {
+  enabled: boolean
+  baseBranch?: string
+  reason?: string
+}
+
+export interface DraftCreateRequest {
+  operation: DraftOperation
+  skillName: string
+  content?: string
+}
+
+export interface DraftResponse {
+  id: string
+  operation: DraftOperation
+  skillName: string
+  branchName: string
+  createdAt: string
+  validation: DraftValidation
+  submission: DraftSubmissionStatus
+}
+
+export interface PullRequestRef {
+  number?: number
+  id?: number
+  url?: string
+}
+
+export interface DraftSubmissionResponse {
+  id: string
+  operation: DraftOperation
+  skillName: string
+  branchName: string
+  baseBranch: string
+  commitHash?: string
+  pullRequest?: PullRequestRef
+  validation: DraftValidation
+}
+
 export interface ApiErrorPayload {
   error?: string
   message?: string
+  validation?: DraftValidation
+  submission?: DraftSubmissionStatus
+}
+
+export class ApiRequestError extends Error {
+  code?: string
+  validation?: DraftValidation
+  submission?: DraftSubmissionStatus
+
+  constructor(payload: ApiErrorPayload, status: number) {
+    super(payload.message ?? `request failed with status ${status}`)
+    this.name = 'ApiRequestError'
+    this.code = payload.error
+    this.validation = payload.validation
+    this.submission = payload.submission
+  }
 }
 
 const configuredBase = (import.meta.env.VITE_API_BASE_URL ?? '').trim()
@@ -61,11 +123,14 @@ function buildUrl(path: string, query?: URLSearchParams): string {
   return query && query.size > 0 ? `${url}?${query.toString()}` : url
 }
 
-async function getJson<T>(path: string, query?: URLSearchParams): Promise<T> {
+async function sendJson<T>(method: string, path: string, body?: unknown, query?: URLSearchParams): Promise<T> {
   const response = await fetch(buildUrl(path, query), {
+    method,
     headers: {
       Accept: 'application/json',
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
     },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   })
 
   if (!response.ok) {
@@ -75,10 +140,18 @@ async function getJson<T>(path: string, query?: URLSearchParams): Promise<T> {
     } catch {
       payload = undefined
     }
-    throw new Error(payload?.message ?? `request failed with status ${response.status}`)
+    throw new ApiRequestError(payload ?? {}, response.status)
   }
 
   return (await response.json()) as T
+}
+
+async function getJson<T>(path: string, query?: URLSearchParams): Promise<T> {
+  return sendJson<T>('GET', path, undefined, query)
+}
+
+async function postJson<T>(path: string, body?: unknown): Promise<T> {
+  return sendJson<T>('POST', path, body)
 }
 
 export function listSkills(offset = 0, limit = catalogPageSize): Promise<ListSkillsResponse> {
@@ -128,4 +201,17 @@ export function getSkill(name: string): Promise<SkillRecord> {
 
 export function getIndexStatus(): Promise<IndexStatus> {
   return getJson<IndexStatus>('/api/v1/index/status')
+}
+
+export function createDraft(request: DraftCreateRequest): Promise<DraftResponse> {
+  const payload = request.operation === 'delete' ? { operation: request.operation, skillName: request.skillName } : request
+  return postJson<DraftResponse>('/api/v1/drafts', payload)
+}
+
+export function getDraft(id: string): Promise<DraftResponse> {
+  return getJson<DraftResponse>(`/api/v1/drafts/${encodeURIComponent(id)}`)
+}
+
+export function submitDraft(id: string): Promise<DraftSubmissionResponse> {
+  return postJson<DraftSubmissionResponse>(`/api/v1/drafts/${encodeURIComponent(id)}/submit`)
 }
