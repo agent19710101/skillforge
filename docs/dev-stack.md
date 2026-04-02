@@ -90,7 +90,7 @@ A minimal local verification flow for draft-to-PR submission is:
 
 ## Web UI development
 
-The first browser UI lives in `web/` and is intentionally read-only in this slice.
+The browser UI lives in `web/` and now supports both read flows and the first browser draft-authoring path.
 
 Run it locally with:
 
@@ -101,6 +101,8 @@ npm run dev
 ```
 
 The Vite dev server proxies `/api/*` to `http://localhost:8080` by default. Set `VITE_API_BASE_URL` when the UI should talk to a different API origin or path prefix.
+
+For write-flow verification, point the UI at an API instance that has access to a writable managed working copy. Draft creation works against the current draft API; draft submission only succeeds when live submission is configured, otherwise the UI will surface the reported disabled-submission reason.
 
 ## Notes
 

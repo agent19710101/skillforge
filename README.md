@@ -63,7 +63,7 @@ go run ./cmd/skillforge draft submit draft01
 
 ## Web UI preview
 
-The first browser UI slice now lives under [`web/`](web/) and currently focuses on read-only catalog discovery. Browse mode now follows the paginated catalog API until it has the full skill list, so larger repositories are no longer silently truncated at the server's default first page.
+The browser UI now lives under [`web/`](web/) and supports both catalog discovery and the first browser-driven draft flow. Browse mode follows the paginated catalog API until it has the full skill list, and the current write slice can create/create update/delete drafts, inspect validation + submission readiness, and submit the current draft through the existing Go API.
 
 Run it locally next to the API with:
 

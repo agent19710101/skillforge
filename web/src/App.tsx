@@ -1,13 +1,36 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import './App.css'
-import { getIndexStatus, getSkill, listAllSkills, searchSkills, type IndexStatus, type SkillRecord } from './api'
+import {
+  ApiRequestError,
+  createDraft,
+  getDraft,
+  getIndexStatus,
+  getSkill,
+  listAllSkills,
+  searchSkills,
+  submitDraft,
+  type DraftOperation,
+  type DraftResponse,
+  type DraftSubmissionResponse,
+  type IndexStatus,
+  type SkillRecord,
+} from './api'
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error'
+type DraftState = 'idle' | 'creating' | 'refreshing' | 'ready' | 'error'
+type SubmitState = 'idle' | 'submitting' | 'ready' | 'error'
 
 type UiLocationState = {
   query: string
   skill: string
 }
+
+const defaultDraftContent = `---
+name: new-skill
+description: Describe the skill
+---
+# new-skill
+`
 
 function App() {
   const initialLocationState = readLocationState()
@@ -21,6 +44,16 @@ function App() {
   const [detailState, setDetailState] = useState<LoadState>('idle')
   const [detailError, setDetailError] = useState('')
   const [indexStatus, setIndexStatus] = useState<IndexStatus | null>(null)
+
+  const [draftOperation, setDraftOperation] = useState<DraftOperation>('create')
+  const [draftSkillName, setDraftSkillName] = useState('')
+  const [draftContent, setDraftContent] = useState(defaultDraftContent)
+  const [draftState, setDraftState] = useState<DraftState>('idle')
+  const [draftError, setDraftError] = useState('')
+  const [currentDraft, setCurrentDraft] = useState<DraftResponse | null>(null)
+  const [submitState, setSubmitState] = useState<SubmitState>('idle')
+  const [submitError, setSubmitError] = useState('')
+  const [submissionResult, setSubmissionResult] = useState<DraftSubmissionResponse | null>(null)
 
   useEffect(() => {
     syncLocationState({ query: submittedQuery, skill: selectedSkillName })
@@ -121,6 +154,9 @@ function App() {
     return `${indexStatus.skillCount} indexed skill(s)`
   }, [indexStatus])
 
+  const createButtonLabel = draftState === 'creating' ? 'Creating draft…' : 'Create draft'
+  const submitButtonLabel = submitState === 'submitting' ? 'Submitting…' : 'Submit draft'
+
   const onSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setSubmittedQuery(query.trim())
@@ -132,13 +168,100 @@ function App() {
     setSelectedSkillName('')
   }
 
+  const onCreateDraft = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setDraftState('creating')
+    setDraftError('')
+    setSubmitState('idle')
+    setSubmitError('')
+    setSubmissionResult(null)
+
+    try {
+      const created = await createDraft({
+        operation: draftOperation,
+        skillName: draftSkillName.trim(),
+        ...(draftOperation === 'delete' ? {} : { content: draftContent }),
+      })
+      setCurrentDraft(created)
+      setDraftState('ready')
+    } catch (error) {
+      setCurrentDraft(null)
+      setDraftState('error')
+      setDraftError(error instanceof Error ? error.message : 'request failed')
+    }
+  }
+
+  const onRefreshDraft = async () => {
+    if (!currentDraft) {
+      return
+    }
+
+    setDraftState('refreshing')
+    setDraftError('')
+    try {
+      const refreshed = await getDraft(currentDraft.id)
+      setCurrentDraft(refreshed)
+      setDraftState('ready')
+    } catch (error) {
+      setDraftState('error')
+      setDraftError(error instanceof Error ? error.message : 'request failed')
+    }
+  }
+
+  const onSubmitDraft = async () => {
+    if (!currentDraft) {
+      return
+    }
+
+    setSubmitState('submitting')
+    setSubmitError('')
+    try {
+      const result = await submitDraft(currentDraft.id)
+      setSubmissionResult(result)
+      setSubmitState('ready')
+    } catch (error) {
+      if (error instanceof ApiRequestError) {
+        setCurrentDraft((previous) => {
+          if (!previous) {
+            return previous
+          }
+          return {
+            ...previous,
+            validation: error.validation ?? previous.validation,
+            submission: error.submission ?? previous.submission,
+          }
+        })
+      }
+      setSubmissionResult(null)
+      setSubmitState('error')
+      setSubmitError(error instanceof Error ? error.message : 'request failed')
+    }
+  }
+
+  const onPrefillFromSelection = () => {
+    if (!selectedSkill) {
+      return
+    }
+    setDraftOperation('update')
+    setDraftSkillName(selectedSkill.name)
+    setDraftContent(selectedSkill.body ?? '')
+  }
+
+  const onPrepareDeleteFromSelection = () => {
+    if (!selectedSkill) {
+      return
+    }
+    setDraftOperation('delete')
+    setDraftSkillName(selectedSkill.name)
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
         <div>
           <p className="eyebrow">Skillforge</p>
-          <h1>Browse skills</h1>
-          <p className="subtitle">Read-only web UI for catalog discovery on top of the current Go API.</p>
+          <h1>Browse and draft skills</h1>
+          <p className="subtitle">Read the catalog, then create and submit draft mutations through the current Go API.</p>
         </div>
         <div className="status-card" aria-label="index status">
           <span className="status-label">Catalog status</span>
@@ -197,7 +320,7 @@ function App() {
           {detailState === 'error' ? <p className="state-message error">Could not load skill details: {detailError}</p> : null}
 
           {detailState === 'ready' && selectedSkill ? (
-            <article className="detail-card">
+            <article className="detail-card section-block">
               <div className="detail-header">
                 <div>
                   <p className="eyebrow">Skill detail</p>
@@ -245,6 +368,209 @@ function App() {
               ) : null}
             </article>
           ) : null}
+
+          <article className="draft-card section-block">
+            <div className="detail-header">
+              <div>
+                <p className="eyebrow">Draft authoring</p>
+                <h2>Create a browser draft</h2>
+              </div>
+              {currentDraft ? (
+                <span className={currentDraft.validation.valid ? 'pill valid' : 'pill invalid'}>
+                  {currentDraft.validation.valid ? 'draft valid' : 'draft invalid'}
+                </span>
+              ) : null}
+            </div>
+
+            <p className="muted">
+              This first write slice creates a draft workspace through the existing draft API, shows validation/submission status,
+              and can submit the current draft when the backend allows it.
+            </p>
+
+            {selectedSkill ? (
+              <div className="inline-actions">
+                <button type="button" className="button-secondary" onClick={onPrefillFromSelection}>
+                  Prefill update from selected skill
+                </button>
+                <button type="button" className="button-secondary" onClick={onPrepareDeleteFromSelection}>
+                  Prepare delete for selected skill
+                </button>
+              </div>
+            ) : null}
+
+            <form className="draft-form" onSubmit={onCreateDraft}>
+              <div className="draft-grid">
+                <label>
+                  Operation
+                  <select value={draftOperation} onChange={(event) => setDraftOperation(event.target.value as DraftOperation)}>
+                    <option value="create">create</option>
+                    <option value="update">update</option>
+                    <option value="delete">delete</option>
+                  </select>
+                </label>
+                <label>
+                  Skill name
+                  <input
+                    value={draftSkillName}
+                    onChange={(event) => setDraftSkillName(event.target.value)}
+                    placeholder="example-skill"
+                  />
+                </label>
+              </div>
+
+              {draftOperation !== 'delete' ? (
+                <label>
+                  Draft content
+                  <textarea
+                    value={draftContent}
+                    onChange={(event) => setDraftContent(event.target.value)}
+                    placeholder="---\nname: example-skill\ndescription: ...\n---\n# example-skill"
+                    rows={12}
+                  />
+                </label>
+              ) : (
+                <p className="state-message">Delete drafts reuse the current skill path and do not require draft content.</p>
+              )}
+
+              <div className="inline-actions">
+                <button type="submit" disabled={draftState === 'creating'}>
+                  {createButtonLabel}
+                </button>
+                <button type="button" className="button-secondary" onClick={onRefreshDraft} disabled={!currentDraft || draftState === 'refreshing'}>
+                  {draftState === 'refreshing' ? 'Refreshing…' : 'Refresh current draft'}
+                </button>
+              </div>
+            </form>
+
+            {draftState === 'error' ? <p className="state-message error">Could not create draft: {draftError}</p> : null}
+
+            {currentDraft ? (
+              <section className="draft-result" aria-label="current draft">
+                <h3>Current draft</h3>
+                <dl className="meta-grid">
+                  <div>
+                    <dt>Draft ID</dt>
+                    <dd>{currentDraft.id}</dd>
+                  </div>
+                  <div>
+                    <dt>Operation</dt>
+                    <dd>{currentDraft.operation}</dd>
+                  </div>
+                  <div>
+                    <dt>Skill</dt>
+                    <dd>{currentDraft.skillName}</dd>
+                  </div>
+                  <div>
+                    <dt>Branch</dt>
+                    <dd>{currentDraft.branchName}</dd>
+                  </div>
+                  <div>
+                    <dt>Created</dt>
+                    <dd>{formatTimestamp(currentDraft.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt>Submission</dt>
+                    <dd>{currentDraft.submission.enabled ? 'enabled' : 'disabled'}</dd>
+                  </div>
+                </dl>
+
+                <section>
+                  <h3>Validation status</h3>
+                  <p className="state-message">{currentDraft.validation.valid ? 'Draft validation passed.' : 'Draft validation reported findings.'}</p>
+                  {currentDraft.validation.findings && currentDraft.validation.findings.length > 0 ? (
+                    <ul className="findings-list">
+                      {currentDraft.validation.findings.map((finding) => (
+                        <li key={`${finding.code}-${finding.path ?? finding.message}`}>
+                          <strong>{finding.code}</strong>: {finding.message}
+                          {finding.path ? <span className="muted"> ({finding.path})</span> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+
+                <section>
+                  <h3>Submission status</h3>
+                  <p className="state-message">
+                    Submission is {currentDraft.submission.enabled ? 'enabled' : 'disabled'}.
+                    {currentDraft.submission.baseBranch ? ` Base branch: ${currentDraft.submission.baseBranch}.` : ''}
+                    {currentDraft.submission.reason ? ` ${currentDraft.submission.reason}` : ''}
+                  </p>
+                </section>
+
+                <div className="inline-actions">
+                  <button type="button" onClick={onSubmitDraft} disabled={!currentDraft.submission.enabled || submitState === 'submitting'}>
+                    {submitButtonLabel}
+                  </button>
+                </div>
+              </section>
+            ) : null}
+
+            {submitState === 'error' ? (
+              <section className="submission-result" aria-label="submit failure details">
+                <p className="state-message error">Could not submit draft: {submitError}</p>
+                {currentDraft ? (
+                  <>
+                    <h3>Latest backend status after failed submit</h3>
+                    <p className="state-message">
+                      Submission is {currentDraft.submission.enabled ? 'enabled' : 'disabled'}.
+                      {currentDraft.submission.baseBranch ? ` Base branch: ${currentDraft.submission.baseBranch}.` : ''}
+                      {currentDraft.submission.reason ? ` ${currentDraft.submission.reason}` : ''}
+                    </p>
+                    <p className="state-message">
+                      {currentDraft.validation.valid
+                        ? 'Validation still reports the draft as valid.'
+                        : 'Validation still reports findings on the draft.'}
+                    </p>
+                    {currentDraft.validation.findings && currentDraft.validation.findings.length > 0 ? (
+                      <ul className="findings-list">
+                        {currentDraft.validation.findings.map((finding) => (
+                          <li key={`${finding.code}-${finding.path ?? finding.message}`}>
+                            <strong>{finding.code}</strong>: {finding.message}
+                            {finding.path ? <span className="muted"> ({finding.path})</span> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </>
+                ) : null}
+              </section>
+            ) : null}
+
+            {submissionResult ? (
+              <section className="submission-result" aria-label="submission result">
+                <h3>Submission result</h3>
+                <dl className="meta-grid">
+                  <div>
+                    <dt>Branch</dt>
+                    <dd>{submissionResult.branchName}</dd>
+                  </div>
+                  <div>
+                    <dt>Base branch</dt>
+                    <dd>{submissionResult.baseBranch}</dd>
+                  </div>
+                  <div>
+                    <dt>Commit</dt>
+                    <dd>{submissionResult.commitHash ?? 'Not reported'}</dd>
+                  </div>
+                  <div>
+                    <dt>Pull request</dt>
+                    <dd>
+                      {submissionResult.pullRequest?.url ? (
+                        <a href={submissionResult.pullRequest.url} target="_blank" rel="noreferrer">
+                          {submissionResult.pullRequest.number ? `#${submissionResult.pullRequest.number}` : submissionResult.pullRequest.url}
+                        </a>
+                      ) : submissionResult.pullRequest?.number ? (
+                        `#${submissionResult.pullRequest.number}`
+                      ) : (
+                        'Not reported'
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+            ) : null}
+          </article>
         </section>
       </main>
     </div>
@@ -277,6 +603,19 @@ function syncLocationState(state: UiLocationState): void {
   const search = params.toString()
   const nextUrl = search === '' ? window.location.pathname : `${window.location.pathname}?${search}`
   window.history.replaceState({}, '', nextUrl)
+}
+
+function formatTimestamp(value: string): string {
+  if (!value) {
+    return 'Unknown'
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return date.toISOString()
 }
 
 export default App

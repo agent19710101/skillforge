@@ -18,7 +18,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -120,6 +122,12 @@ button:hover {
   filter: brightness(1.05);
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  filter: none;
+}
+
 .button-secondary {
   background: rgba(148, 163, 184, 0.18);
 }
@@ -131,6 +139,10 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.section-block + .section-block {
+  margin-top: 1.5rem;
 }
 
 .skill-list-item {
@@ -209,6 +221,59 @@ button:hover {
   border: 1px solid rgba(148, 163, 184, 0.18);
   overflow-x: auto;
   white-space: pre-wrap;
+}
+
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.draft-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.draft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.draft-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-weight: 700;
+}
+
+.draft-form input,
+.draft-form select,
+.draft-form textarea {
+  width: 100%;
+  background: #0b1020;
+  color: #f8fbff;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+}
+
+.draft-form textarea {
+  resize: vertical;
+  min-height: 240px;
+}
+
+.draft-result,
+.submission-result {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+a {
+  color: #8fb7ff;
 }
 
 @media (max-width: 900px) {

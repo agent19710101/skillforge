@@ -1,6 +1,6 @@
 # Skillforge web UI
 
-This package contains the first read-only browser UI for Skillforge.
+This package contains the current browser UI for Skillforge.
 
 ## Scope of this slice
 
@@ -11,9 +11,12 @@ The current UI supports:
 - full-text search
 - skill detail viewing
 - URL-backed `?q=` search and `?skill=` selection for shareable deep links
+- browser draft creation for `create`, `update`, and `delete` operations
+- draft validation and submission-capability/status display
+- browser submission of the current draft through the existing draft API
 - basic loading, empty, and error states
 
-It intentionally does **not** include draft authoring or submission yet.
+It still does **not** include multi-draft history, reviewer/admin dashboards, or auth/user management.
 
 ## Local development
 
